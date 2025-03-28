@@ -1,5 +1,12 @@
 module OnlineSampleStatistics
 
-# Write your package code here.
+export UnivariateStatistic,
+    fit,
+    mean,
+    merge,
+    var
+
+
+include("UnivariateStat.jl")
 
 end
