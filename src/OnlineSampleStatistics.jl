@@ -1,4 +1,4 @@
-module OnlineSampleStatistic
+module OnlineSampleStatistics
 
 # Write your package code here.
 

@@ -1,10 +1,10 @@
-using OnlineSampleStatistic
+using OnlineSampleStatistics
 using Test
 using Aqua
 
-@testset "OnlineSampleStatistic.jl" begin
+@testset "OnlineSampleStatistics.jl" begin
     @testset "Code quality (Aqua.jl)" begin
-        Aqua.test_all(OnlineSampleStatistic)
+        Aqua.test_all(OnlineSampleStatistics)
     end
     # Write your tests here.
 end

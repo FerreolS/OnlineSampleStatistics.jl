@@ -1,14 +1,14 @@
 ```@meta
-CurrentModule = OnlineSampleStatistic
+CurrentModule = OnlineSampleStatistics
 ```
 
-# OnlineSampleStatistic
+# OnlineSampleStatistics
 
-Documentation for [OnlineSampleStatistic](https://github.com/FerreolS/OnlineSampleStatistic.jl).
+Documentation for [OnlineSampleStatistics](https://github.com/FerreolS/OnlineSampleStatistics.jl).
 
 ```@index
 ```
 
 ```@autodocs
-Modules = [OnlineSampleStatistic]
+Modules = [OnlineSampleStatistics]
 ```

@@ -24,9 +24,9 @@ jobs:
       matrix:
         version:
           - '1.11'
-          - '1.8'
-          - '["lts'
-          - 'pre"]'
+          - '1.6'
+          - 'lts'
+          - 'pre'
         os:
           - ubuntu-latest
         arch:
@@ -74,6 +74,6 @@ jobs:
         shell: julia --project=docs --color=yes {0}
         run: |
           using Documenter: DocMeta, doctest
-          using OnlineSampleStatistic
-          DocMeta.setdocmeta!(OnlineSampleStatistic, :DocTestSetup, :(using OnlineSampleStatistic); recursive=true)
-          doctest(OnlineSampleStatistic)
+          using OnlineSampleStatistics
+          DocMeta.setdocmeta!(OnlineSampleStatistics, :DocTestSetup, :(using OnlineSampleStatistics); recursive=true)
+          doctest(OnlineSampleStatistics)
