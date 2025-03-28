@@ -1,0 +1,14 @@
+name = "OnlineSampleStatistic"
+uuid = "455218f6-ed6f-43e9-ad07-c481a1567983"
+authors = ["ferreol.soulez@univ-lyon1.fr"]
+version = "0.0.1"
+
+[compat]
+julia = "1.8"
+
+[extras]
+Aqua = "4c88cf16-eb10-579e-8560-4a9242c79595"
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+
+[targets]
+test = ["Aqua", "Test"]
