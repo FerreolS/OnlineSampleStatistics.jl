@@ -61,7 +61,6 @@ function StatsBase.kurtosis(A::UnivariateStatistic{T,K,Int}) where {T,K}
     return get_rawmoments(A, 4) / N
 end
 
-
 function Base.merge!(A::UnivariateStatistic{T,1,I}, B::UnivariateStatistic{T,K,I}) where {T,K,I}
     A.weights += B.weights
     A.rawmoments[1] += inv(A.weights) * B.weights * (B.rawmoments[1] - A.rawmoments)

@@ -1,4 +1,5 @@
 module OnlineSampleStatistics
+using ZippedArrays
 
 export UnivariateStatistic,
     mean,
