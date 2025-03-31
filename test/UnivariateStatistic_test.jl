@@ -9,9 +9,9 @@
     @test B.weights == 0
 
     @test mean(A) == 0.5
-    @test var(A) === NaN
-    @test skewness(A) === NaN
-    @test kurtosis(A) === NaN
+    @test isnan(var(A))
+    @test isnan(skewness(A))
+    @test isnan(kurtosis(A))
     @test nobs(A) == 1
 
     C = zero(A)
