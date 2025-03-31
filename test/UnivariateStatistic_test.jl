@@ -11,9 +11,9 @@
     @test B.weights == 0
 
     @test mean(A) == 0.5
-    @test var(A) == 0.0
-    @test skewness(A) == 0.0
-    @test kurtosis(A) == 0.0
+    @test var(A) == NaN
+    @test skewness(A) == NaN
+    @test kurtosis(A) == NaN
     @test nobs(A) == 1
 
     C = UnivariateStatistic(2, Float64)

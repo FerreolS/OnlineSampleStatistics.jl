@@ -23,7 +23,8 @@ UnivariateStatistic(K::Int, T::Type) = UnivariateStatistic(zeros(T, K), 0)
 
 nonnegative(x) = x ≥ 0
 
-Base.zero(::Type{UnivariateStatistic{T,K,I}}) where {T,K,I} = UnivariateStatistic(zeros(T, N), zero(I))
+Base.zero(::T) where {T<:UnivariateStatistic} = zero(T)
+Base.zero(::Type{UnivariateStatistic{T,K,I}}) where {T,K,I} = UnivariateStatistic(zeros(T, K), zero(I))
 
 StatsAPI.nobs(A::UnivariateStatistic{T,K,Int}) where {T,K} = A.weights
 StatsAPI.weights(A::UnivariateStatistic) = A.weights
