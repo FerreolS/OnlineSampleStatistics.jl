@@ -25,4 +25,11 @@
     merge!(C, D)
     @test mean(C) == 0.5
     @test var(C; corrected=false) == 0.25
+
+    E = zero(typeof(B))
+    push!(E, ones(10))
+    F = zero(A)
+    push!(F, zeros(10))
+    merge!(E, F)
+    @test mean(E) == 0.5
 end
