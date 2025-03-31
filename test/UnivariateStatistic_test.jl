@@ -27,9 +27,9 @@
     @test var(C; corrected=false) == 0.25
 
     E = zero(typeof(B))
-    push!(E, ones(10))
-    F = zero(A)
-    push!(F, zeros(10))
+    push!(E, ones(Float32, 10))
+    F = zero(B)
+    push!(F, zeros(Float32, 10))
     merge!(E, F)
     @test mean(E) == 0.5
 end

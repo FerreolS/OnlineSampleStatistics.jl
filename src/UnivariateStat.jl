@@ -64,7 +64,7 @@ end
 
 function Base.merge!(A::UnivariateStatistic{T,1,I}, B::UnivariateStatistic{T,K,I}) where {T,K,I}
     A.weights += B.weights
-    A.rawmoments[1] += inv(A.weights) * B.weights * (B.rawmoments[1] - A.rawmoments)
+    A.rawmoments[1] += inv(A.weights) * B.weights * (B.rawmoments[1] - A.rawmoments[1])
     return A
 end
 
@@ -98,7 +98,7 @@ end =#
 
 
 function Base.push!(A::UnivariateStatistic{T,1}, b::T) where {T}
-    A.rawmoments[1] += inv(A.weights) * (b - A.rawmoments[1])
+    A.rawmoments[1] += inv(A.weights += 1) * (b - A.rawmoments[1])
     return A
 end
 
