@@ -18,7 +18,7 @@ struct ProbabilityWeights <: WeightTraits end
 WeightTraits(A::UnivariateStatistic) = ProbabilityWeights()
 WeightTraits(A::UnivariateStatistic{T,K,Int}) where {T,K} = FrequencyWeights()
  =#
-UnivariateStatistic(K::Int, x::T) where {T<:Number} = UnivariateStatistic(vcat(x, zeros(K - 1)), 0)
+UnivariateStatistic(K::Int, x::T) where {T<:Number} = UnivariateStatistic(vcat(x, zeros(K - 1)), 1)
 UnivariateStatistic(K::Int, T::Type) = UnivariateStatistic(zeros(T, K), 0)
 
 nonnegative(x) = x ≥ 0
