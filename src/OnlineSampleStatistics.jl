@@ -1,10 +1,12 @@
 module OnlineSampleStatistics
 
 export UnivariateStatistic,
-    fit,
     mean,
-    merge,
-    var
+    var,
+    nobs,
+    skewness,
+    kurtosis,
+    weights
 
 
 include("UnivariateStat.jl")
