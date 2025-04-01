@@ -26,7 +26,7 @@
     @test mean(C) == 0.5
     @test var(C; corrected=false) == 0.25
 
-    E = zero(typeof(B))
+    E = UnivariateStatistic(2, Float32)
     push!(E, ones(Float32, 10))
     F = UnivariateStatistic(2, Float64)
     push!(F, zeros(Float32, 10))

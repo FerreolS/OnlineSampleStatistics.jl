@@ -27,6 +27,8 @@ Base.zero(::T) where {T<:UnivariateStatistic} = zero(T)
 Base.zero(::Type{UnivariateStatistic{T,K,I}}) where {T,K,I} = UnivariateStatistic(zeros(T, K), zero(I))
 Base.eltype(::UnivariateStatistic{T}) where {T} = T
 
+Base.:(==)(A::UnivariateStatistic{T,K,I}, B::UnivariateStatistic{T,K,I}) where {T,K,I} = A.rawmoments == B.rawmoments && A.weights == B.weights
+
 StatsAPI.nobs(A::UnivariateStatistic{T,K,Int}) where {T,K} = A.weights
 StatsAPI.weights(A::UnivariateStatistic) = A.weights
 
