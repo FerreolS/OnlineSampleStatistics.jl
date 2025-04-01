@@ -28,8 +28,19 @@
 
     E = zero(typeof(B))
     push!(E, ones(Float32, 10))
-    F = zero(B)
+    F = UnivariateStatistic(2, Float64)
     push!(F, zeros(Float32, 10))
-    merge!(E, F)
-    @test mean(E) == 0.5
+    merge!(F, E)
+    @test mean(F) == 0.5
+    @test eltype(F) == Float64
+
+    F = UnivariateStatistic(2, Float64)
+    E = UnivariateStatistic(2, Float32)
+    push!(F, zeros(Float32, 10))
+    @test merge!(F, E) == F
+
+    F = UnivariateStatistic(1, Float64)
+    push!(F, zeros(Float32, 10))
+    push!(E, zeros(Float32, 10))
+    @test merge!(F, E) == UnivariateStatistic([0.0], 20)
 end

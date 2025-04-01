@@ -25,6 +25,7 @@ nonnegative(x) = x ≥ 0
 
 Base.zero(::T) where {T<:UnivariateStatistic} = zero(T)
 Base.zero(::Type{UnivariateStatistic{T,K,I}}) where {T,K,I} = UnivariateStatistic(zeros(T, K), zero(I))
+Base.eltype(::UnivariateStatistic{T}) where {T} = T
 
 StatsAPI.nobs(A::UnivariateStatistic{T,K,Int}) where {T,K} = A.weights
 StatsAPI.weights(A::UnivariateStatistic) = A.weights
@@ -62,16 +63,32 @@ function StatsBase.kurtosis(A::UnivariateStatistic{T,K,Int}) where {T,K}
     return get_rawmoments(A, 4) / N
 end
 
-function Base.merge!(A::UnivariateStatistic{T,1,I}, B::UnivariateStatistic{T,K,I}) where {T,K,I}
+function Base.merge(A::UnivariateStatistic{T1,1,I}, B::UnivariateStatistic{T2,K,I}) where {T1,T2,K,I}
+    T = promote_type(T1, T2)
+    if T == T1
+        merge!(A, B)
+        return A
+    elseif T == T2
+        merge!(B, A)
+        return B
+    else
+        error("The input for $(typeof(A)) is $T. Found $T2.")
+    end
+end
+
+
+function Base.merge!(A::UnivariateStatistic{T1,1,I}, B::UnivariateStatistic{T2,K,I}) where {T1,T2,K,I}
+    promote_type(T1, T2) == T1 || error("The input for $(typeof(A)) is $T. Found $(eltype(B)).")
     A.weights += B.weights
     A.rawmoments[1] += inv(A.weights) * B.weights * (B.rawmoments[1] - A.rawmoments[1])
     return A
 end
 
 
-function Base.merge!(A::UnivariateStatistic{T,2,I}, B::UnivariateStatistic{T,2,I}) where {T,I}
+function Base.merge!(A::UnivariateStatistic{T1,2,I}, B::UnivariateStatistic{T2,2,I}) where {T1,T2,I}
+    promote_type(T1, T2) == T1 || error("The input for $(typeof(A)) is $T. Found $(eltype(B)).")
     NA = weights(A)
-    NB = weights(B)
+    (NB = weights(B)) == 0 && return A
     N = NA + NB
     A.weights = N
     μA, MA = A.rawmoments
@@ -83,26 +100,25 @@ function Base.merge!(A::UnivariateStatistic{T,2,I}, B::UnivariateStatistic{T,2,I
 end
 
 function Base.push!(A::UnivariateStatistic{T}, y::T2) where {T,T2}
-    T == eltype(y) || error("The input for $(typeof(A)) is $T. Found $T2.")
+    T == eltype(y) || promote_type(T, eltype(y)) == T || error("The input for $(typeof(A)) is $T. Found $T2.")
     for x ∈ y
         A = push!(A, x)
     end
     return A
 end
 
-#= 
 function Base.push!(A::UnivariateStatistic{T}, b::T2) where {T,T2<:Number}
     promote_type(T, T2) == T || error("The input type $T2 is not promotable to $T")
     push!(A, T(b))
-end =#
+end
 
 
-function Base.push!(A::UnivariateStatistic{T,1}, b::T) where {T}
+function Base.push!(A::UnivariateStatistic{T,1}, b::T) where {T<:Number}
     A.rawmoments[1] += inv(A.weights += 1) * (b - A.rawmoments[1])
     return A
 end
 
-function Base.push!(A::UnivariateStatistic{T,2}, b::T) where {T}
+function Base.push!(A::UnivariateStatistic{T,2}, b::T) where {T<:Number}
     NA = weights(A)
     N = NA + 1
     A.weights = N
