@@ -20,7 +20,13 @@ WeightTraits(A::UnivariateStatistic{T,K,Int}) where {T,K} = FrequencyWeights()
  =#
 UnivariateStatistic(K::Int, x::T) where {T<:Number} = UnivariateStatistic(vcat(x, zeros(T, K - 1)), 1)
 UnivariateStatistic(K::Int, T::Type) = UnivariateStatistic(zeros(T, K), 0)
-UnivariateStatistic(::Type{T}, K::Int, x::T2) where {T,T2<:Number} = UnivariateStatistic(vcat(T(x), zeros(T, K - 1)), 1)
+UnivariateStatistic(::Type{T}, K::Int, x) where {T} = UnivariateStatistic(K, T.(x))
+
+function UnivariateStatistic(K::Int, x::AbstractArray{T}) where {T<:Number}
+    A = UnivariateStatistic(K, T)
+    push!(A, x)
+    return A
+end
 
 nonnegative(x) = x ≥ 0
 
