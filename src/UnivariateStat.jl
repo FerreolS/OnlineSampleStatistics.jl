@@ -18,8 +18,9 @@ struct ProbabilityWeights <: WeightTraits end
 WeightTraits(A::UnivariateStatistic) = ProbabilityWeights()
 WeightTraits(A::UnivariateStatistic{T,K,Int}) where {T,K} = FrequencyWeights()
  =#
-UnivariateStatistic(K::Int, x::T) where {T<:Number} = UnivariateStatistic(vcat(x, zeros(K - 1)), 1)
+UnivariateStatistic(K::Int, x::T) where {T<:Number} = UnivariateStatistic(vcat(x, zeros(T, K - 1)), 1)
 UnivariateStatistic(K::Int, T::Type) = UnivariateStatistic(zeros(T, K), 0)
+UnivariateStatistic(::Type{T}, K::Int, x::T2) where {T,T2<:Number} = UnivariateStatistic(vcat(T(x), zeros(T, K - 1)), 1)
 
 nonnegative(x) = x ≥ 0
 
@@ -28,6 +29,7 @@ Base.zero(::Type{UnivariateStatistic{T,K,I}}) where {T,K,I} = UnivariateStatisti
 Base.eltype(::UnivariateStatistic{T}) where {T} = T
 
 Base.:(==)(A::UnivariateStatistic{T,K,I}, B::UnivariateStatistic{T,K,I}) where {T,K,I} = A.rawmoments == B.rawmoments && A.weights == B.weights
+Base.copy(A::UnivariateStatistic) = deepcopy(A)
 
 StatsAPI.nobs(A::UnivariateStatistic{T,K,Int}) where {T,K} = A.weights
 StatsAPI.weights(A::UnivariateStatistic) = A.weights
@@ -68,11 +70,13 @@ end
 function Base.merge(A::UnivariateStatistic{T1,1,I}, B::UnivariateStatistic{T2,K,I}) where {T1,T2,K,I}
     T = promote_type(T1, T2)
     if T == T1
-        merge!(A, B)
-        return A
+        C = copy(A)
+        merge!(C, B)
+        return C
     elseif T == T2
-        merge!(B, A)
-        return B
+        C = copy(B)
+        merge!(C, A)
+        return C
     else
         error("The input for $(typeof(A)) is $T. Found $T2.")
     end

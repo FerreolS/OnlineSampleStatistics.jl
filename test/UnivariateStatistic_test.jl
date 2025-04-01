@@ -34,13 +34,13 @@
     @test mean(F) == 0.5
     @test eltype(F) == Float64
 
-    F = UnivariateStatistic(2, Float32)
-    E = UnivariateStatistic(1, Float64)
+    F = UnivariateStatistic(2, Float64)
+    E = UnivariateStatistic(2, Float32)
     push!(F, zeros(Float32, 10))
-    @test merge!(F, E) == F
+    @test merge!(F, E) == UnivariateStatistic([0.0, 0.0], 10)
 
     F = UnivariateStatistic(1, Float64)
     push!(F, zeros(Float32, 10))
     push!(E, zeros(Float32, 10))
-    @test merge!(F, E) == UnivariateStatistic([0.0], 20)
+    @test merge(F, E) == UnivariateStatistic([0.0], 20)
 end
