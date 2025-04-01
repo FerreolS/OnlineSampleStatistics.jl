@@ -146,7 +146,7 @@ end
 function StatsBase.skewness(A::UnivariateStatistic{T,K,Int}) where {T,K}
     N = nobs(A)
     N < 2 && return T(NaN)
-    return get_rawmoments(A, 3) / N
+    return sqrt(get_rawmoments(A, 3) / N)
 end
 
 function StatsBase.kurtosis(A::UnivariateStatistic{T,K,Int}) where {T,K}
@@ -210,7 +210,6 @@ function Base.merge!(A::UnivariateStatistic{T1,1,I}, B::UnivariateStatistic{T2,K
     return A
 end
 
-
 function Base.merge!(A::UnivariateStatistic{T1,2,I}, B::UnivariateStatistic{T2,2,I}) where {T1,T2,I}
     promote_type(T1, T2) == T1 || throw(ArgumentError("The input for $(typeof(A)) is $T. Found $(eltype(B))."))
     NA = weights(A)
@@ -268,4 +267,54 @@ function Base.push!(A::UnivariateStatistic{T,2}, b::T) where {T<:Number}
 
     A.rawmoments[2] += inv(N) * NA * δAB^2
     return A
+end
+
+
+
+@generated function Base.merge!(A::UnivariateStatistic{T,N,Int}, B::UnivariateStatistic{T,M,Int}) where {T,M,N}
+    N < M || throw(ArgumentError("The number of moment $M of the second Arguments is less than the first $N."))
+    code = Expr(:block)
+    push!(code.args, quote
+        NA = weights(A)
+        (NB = weights(B)) == 0 && return A
+        N = NA + NB
+        A.weights = N
+        μA, MA = A.rawmoments[1:2]
+        μB, MB = B.rawmoments[1:2]
+        δAB = (μB - μA)
+        P1 = -inv(N) * NB * δAB
+        P2 = inv(N) * NA * δAB
+        A.rawmoments[1] -= P1
+        A.rawmoments[2] += MB + P2 * NB * δAB
+    end)
+    for p in 3:N
+        for k in 0:p
+            push!(code.args, :(A.rawmoments[$p] += binomial($p, $k) * (P1^$k * A.rawmoments[$p-$k] + P2^$k * B.rawmoments[$p-$k])))
+        end
+    end
+    push!(code.args, :(return A))
+    return code
+end
+
+
+@generated function Base.push!(A::UnivariateStatistic{T,P,Int}, b::T) where {P,T<:Number}
+    code = Expr(:block)
+    push!(code.args, quote
+        NA = weights(A)
+        N = NA + 1
+        A.weights = N
+        μA, MA = A.rawmoments[1:2]
+        δAB = (b - μA)
+        A.rawmoments[1] += inv(N) * δAB
+        A.rawmoments[2] += inv(N) * NA * δAB^2
+    end)
+    for p in 3:P
+        #push!(code.args, :(A.rawmoments[$p] += ((inv(-N))^$p * (N - 1) + (inv(N) * (N - 1))^$p) * δAB))
+        push!(code.args, :(A.rawmoments[$p] += ((N - 1) / (-N)^$p + ((N - 1) / N)^$p) * δAB^$p))
+        for k in 1:(p-2)
+            push!(code.args, :(A.rawmoments[$p] += binomial($p, $k) * (A.rawmoments[$p-$k] * (inv(-N))^$k * δAB)^$k))
+        end
+    end
+    push!(code.args, :(return A))
+    return code
 end
