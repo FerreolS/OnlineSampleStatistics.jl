@@ -168,6 +168,76 @@ function StatsBase.kurtosis(A::UnivariateStatistic{T,K,Int}) where {T,K}
     return (cm4 / (cm2 * cm2 / N)) - 3.0
 end
 
+
+"""
+    Base.push!(A::UnivariateStatistic{T}, y::T2) where {T, T2}
+
+Pushes a new samples `y` into the UnivariateStatistic `A`.
+
+# Arguments
+- `A::UnivariateStatistic{T}`: The UnivariateStatistic object to which elements will be added. The type parameter `T` specifies the expected element type.
+- `y::T2`: the sample or array of sample pushed to `A`. The type `T2` must either match `T` or be promotable to `T`.
+
+# Throws
+- `ArgumentError`: If the type of elements in `y` is not compatible with the type `T` of `A`.
+
+"""
+function Base.push!(A::UnivariateStatistic{T}, y::T2) where {T,T2}
+    T == eltype(y) || promote_type(T, eltype(y)) == T || throw(ArgumentError("The input for $(typeof(A)) is $T. Found $T2."))
+    for x ∈ y
+        A = push!(A, x)
+    end
+    return A
+end
+
+function Base.push!(A::UnivariateStatistic{T}, b::T2) where {T,T2<:Number}
+    promote_type(T, T2) == T || throw(ArgumentError("The input type $T2 is not promotable to $T"))
+    push!(A, T(b))
+end
+
+
+function Base.push!(A::UnivariateStatistic{T,1}, b::T) where {T<:Number}
+    A.rawmoments[1] += inv(A.weights += 1) * (b - A.rawmoments[1])
+    return A
+end
+
+function Base.push!(A::UnivariateStatistic{T,2}, b::T) where {T<:Number}
+    NA = weights(A)
+    N = NA + 1
+    A.weights = N
+    μA, MA = A.rawmoments
+
+    δBA = (b - μA)
+    A.rawmoments[1] += inv(N) * δBA
+    A.rawmoments[2] += inv(N) * NA * δBA^2
+    return A
+end
+
+
+@generated function Base.push!(A::UnivariateStatistic{T,P,Int}, b::T) where {P,T<:Number}
+    code = Expr(:block)
+    push!(code.args, quote
+        NA = weights(A)
+        N = NA + 1
+        A.weights = N
+        δBA = (b - A.rawmoments[1])
+        iN = inv(N)
+    end)
+    for p in P:-1:3
+        push!(code.args, :(A.rawmoments[$p] += (NA * (-iN)^$p + (NA * iN)^$p) * δBA^$p))
+        for k in 1:(p-2)
+            push!(code.args, :(A.rawmoments[$p] += binomial($p, $k) * (A.rawmoments[$p-$k] * (-δBA * iN)^$k)))
+        end
+    end
+    push!(code.args, quote
+        A.rawmoments[1] += inv(N) * δBA
+        A.rawmoments[2] += inv(N) * NA * δBA^2
+    end)
+    push!(code.args, :(return A))
+    return code
+end
+
+
 """
     merge(A::UnivariateStatistic, B::UnivariateStatistic)
 
@@ -237,52 +307,6 @@ function Base.merge!(A::UnivariateStatistic{T1,2,I}, B::UnivariateStatistic{T2,2
     return A
 end
 
-"""
-    Base.push!(A::UnivariateStatistic{T}, y::T2) where {T, T2}
-
-Pushes a new samples `y` into the UnivariateStatistic `A`.
-
-# Arguments
-- `A::UnivariateStatistic{T}`: The UnivariateStatistic object to which elements will be added. The type parameter `T` specifies the expected element type.
-- `y::T2`: the sample or array of sample pushed to `A`. The type `T2` must either match `T` or be promotable to `T`.
-
-# Throws
-- `ArgumentError`: If the type of elements in `y` is not compatible with the type `T` of `A`.
-
-"""
-function Base.push!(A::UnivariateStatistic{T}, y::T2) where {T,T2}
-    T == eltype(y) || promote_type(T, eltype(y)) == T || throw(ArgumentError("The input for $(typeof(A)) is $T. Found $T2."))
-    for x ∈ y
-        A = push!(A, x)
-    end
-    return A
-end
-
-function Base.push!(A::UnivariateStatistic{T}, b::T2) where {T,T2<:Number}
-    promote_type(T, T2) == T || throw(ArgumentError("The input type $T2 is not promotable to $T"))
-    push!(A, T(b))
-end
-
-
-function Base.push!(A::UnivariateStatistic{T,1}, b::T) where {T<:Number}
-    A.rawmoments[1] += inv(A.weights += 1) * (b - A.rawmoments[1])
-    return A
-end
-
-function Base.push!(A::UnivariateStatistic{T,2}, b::T) where {T<:Number}
-    NA = weights(A)
-    N = NA + 1
-    A.weights = N
-    μA, MA = A.rawmoments
-
-    δBA = (b - μA)
-    A.rawmoments[1] += inv(N) * δBA
-
-    A.rawmoments[2] += inv(N) * NA * δBA^2
-    return A
-end
-
-
 
 @generated function Base.merge!(A::UnivariateStatistic{T,P,Int}, B::UnivariateStatistic{T,M,Int}) where {T,M,P}
     P ≤ M || throw(ArgumentError("The number of moment $M of the second Arguments is less than the first $P."))
@@ -306,30 +330,6 @@ end
     push!(code.args, quote
         A.rawmoments[1] -= PB
         A.rawmoments[2] += B.rawmoments[2] + PA * NB * δBA
-    end)
-    push!(code.args, :(return A))
-    return code
-end
-
-
-@generated function Base.push!(A::UnivariateStatistic{T,P,Int}, b::T) where {P,T<:Number}
-    code = Expr(:block)
-    push!(code.args, quote
-        NA = weights(A)
-        N = NA + 1
-        A.weights = N
-        δBA = (b - A.rawmoments[1])
-        iN = inv(N)
-    end)
-    for p in P:-1:3
-        push!(code.args, :(A.rawmoments[$p] += (NA * (-iN)^$p + (NA * iN)^$p) * δBA^$p))
-        for k in 1:(p-2)
-            push!(code.args, :(A.rawmoments[$p] += binomial($p, $k) * (A.rawmoments[$p-$k] * (-δBA * iN)^$k)))
-        end
-    end
-    push!(code.args, quote
-        A.rawmoments[1] += inv(N) * δBA
-        A.rawmoments[2] += inv(N) * NA * δBA^2
     end)
     push!(code.args, :(return A))
     return code
