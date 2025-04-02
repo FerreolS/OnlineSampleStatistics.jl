@@ -60,5 +60,12 @@
         @test @inferred isapprox(var(A; corrected=false), var(x; corrected=false); rtol=1e-6)
         @test @inferred isapprox(skewness(A), skewness(x); rtol=1e-6)
         @test @inferred isapprox(kurtosis(A), kurtosis(x); rtol=1e-6)
+
+        x1 = x[1:10^5]
+        x2 = x[(10^5+1):end]
+        B = UnivariateStatistic(4, x1)
+        C = UnivariateStatistic(4, x2)
+        merge!(B, C)
+        @test A.rawmoments ≈ B.rawmoments
     end
 end

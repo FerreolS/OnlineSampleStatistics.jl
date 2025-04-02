@@ -231,9 +231,9 @@ function Base.merge!(A::UnivariateStatistic{T1,2,I}, B::UnivariateStatistic{T2,2
     A.weights = N
     μA, MA = A.rawmoments
     μB, MB = B.rawmoments
-    δAB = (μB - μA)
-    A.rawmoments[1] += inv(N) * NB * δAB
-    A.rawmoments[2] += MB + inv(N) * NA * NB * δAB^2
+    δBA = (μB - μA)
+    A.rawmoments[1] += inv(N) * NB * δBA
+    A.rawmoments[2] += MB + inv(N) * NA * NB * δBA^2
     return A
 end
 
@@ -275,36 +275,38 @@ function Base.push!(A::UnivariateStatistic{T,2}, b::T) where {T<:Number}
     A.weights = N
     μA, MA = A.rawmoments
 
-    δAB = (b - μA)
-    A.rawmoments[1] += inv(N) * δAB
+    δBA = (b - μA)
+    A.rawmoments[1] += inv(N) * δBA
 
-    A.rawmoments[2] += inv(N) * NA * δAB^2
+    A.rawmoments[2] += inv(N) * NA * δBA^2
     return A
 end
 
 
 
-@generated function Base.merge!(A::UnivariateStatistic{T,N,Int}, B::UnivariateStatistic{T,M,Int}) where {T,M,N}
-    N < M || throw(ArgumentError("The number of moment $M of the second Arguments is less than the first $N."))
+@generated function Base.merge!(A::UnivariateStatistic{T,P,Int}, B::UnivariateStatistic{T,M,Int}) where {T,M,P}
+    P ≤ M || throw(ArgumentError("The number of moment $M of the second Arguments is less than the first $P."))
     code = Expr(:block)
     push!(code.args, quote
         NA = weights(A)
         (NB = weights(B)) == 0 && return A
         N = NA + NB
         A.weights = N
-        μA, MA = A.rawmoments[1:2]
-        μB, MB = B.rawmoments[1:2]
-        δAB = (μB - μA)
-        P1 = -inv(N) * NB * δAB
-        P2 = inv(N) * NA * δAB
-        A.rawmoments[1] -= P1
-        A.rawmoments[2] += MB + P2 * NB * δAB
+        iN = inv(N)
+        δBA = (B.rawmoments[1] - A.rawmoments[1])
+        PB = -iN * NB * δBA
+        PA = iN * NA * δBA
     end)
-    for p in 3:N
-        for k in 0:p
-            push!(code.args, :(A.rawmoments[$p] += binomial($p, $k) * (P1^$k * A.rawmoments[$p-$k] + P2^$k * B.rawmoments[$p-$k])))
+    for p in P:-1:3
+        for k in 1:(p-2)
+            push!(code.args, :(A.rawmoments[$p] += binomial($p, $k) * (PB^$k * A.rawmoments[$p-$k] + PA^$k * B.rawmoments[$p-$k])))
         end
+        push!(code.args, :(A.rawmoments[$p] += B.rawmoments[$p] + NA * PB^$p + NB * PA^$p))
     end
+    push!(code.args, quote
+        A.rawmoments[1] -= PB
+        A.rawmoments[2] += B.rawmoments[2] + PA * NB * δBA
+    end)
     push!(code.args, :(return A))
     return code
 end
@@ -316,18 +318,18 @@ end
         NA = weights(A)
         N = NA + 1
         A.weights = N
-        δAB = (b - A.rawmoments[1])
+        δBA = (b - A.rawmoments[1])
         iN = inv(N)
     end)
     for p in P:-1:3
-        push!(code.args, :(A.rawmoments[$p] += (NA * (-iN)^$p + (NA * iN)^$p) * δAB^$p))
+        push!(code.args, :(A.rawmoments[$p] += (NA * (-iN)^$p + (NA * iN)^$p) * δBA^$p))
         for k in 1:(p-2)
-            push!(code.args, :(A.rawmoments[$p] += binomial($p, $k) * (A.rawmoments[$p-$k] * (-δAB * iN)^$k)))
+            push!(code.args, :(A.rawmoments[$p] += binomial($p, $k) * (A.rawmoments[$p-$k] * (-δBA * iN)^$k)))
         end
     end
     push!(code.args, quote
-        A.rawmoments[1] += inv(N) * δAB
-        A.rawmoments[2] += inv(N) * NA * δAB^2
+        A.rawmoments[1] += inv(N) * δBA
+        A.rawmoments[2] += inv(N) * NA * δBA^2
     end)
     push!(code.args, :(return A))
     return code
