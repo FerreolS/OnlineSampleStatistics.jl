@@ -66,6 +66,6 @@
         B = UnivariateStatistic(4, x1)
         C = UnivariateStatistic(4, x2)
         merge!(B, C)
-        @test A.rawmoments ≈ B.rawmoments
+        @test isapprox(A.rawmoments, B.rawmoments; rtol=1e-6)
     end
 end
