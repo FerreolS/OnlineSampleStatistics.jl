@@ -57,6 +57,12 @@ Constructs an empty `UnivariateStatistic` object of type `T` with `K` moments.
 
 ---
 
+    UnivariateStatistic(K::Int)
+
+Constructs an empty `UnivariateStatistic` object of type Float64 with `K` moments.
+
+---
+
     UnivariateStatistic(::Type{T}, K::Int, x) where {T}
 
 Constructs a `UnivariateStatistic` object  of type `T` with a single sample `x`.
@@ -81,7 +87,7 @@ Constructs a UnivariateStatistic object storing the first `K` moments  from the 
 """
 
 function UnivariateStatistic(K::Int, x::AbstractArray{T}) where {T<:Number}
-    A = UnivariateStatistic(K, T)
+    A = UnivariateStatistic(T, K)
     push!(A, x)
     return A
 end
@@ -310,15 +316,13 @@ end
         NA = weights(A)
         N = NA + 1
         A.weights = N
-        μA, MA = A.rawmoments[1:2]
-        δAB = (b - μA)
+        δAB = (b - A.rawmoments[1])
+        iN = inv(N)
     end)
     for p in P:-1:3
-        #push!(code.args, :(A.rawmoments[$p] += ((inv(-N))^$p * (N - 1) + (inv(N) * (N - 1))^$p) * δAB))
-        push!(code.args, :(A.rawmoments[$p] += (NA * (inv(-N))^$p + ((NA) / N)^$p) * δAB^$p))
+        push!(code.args, :(A.rawmoments[$p] += (NA * (-iN)^$p + (NA * iN)^$p) * δAB^$p))
         for k in 1:(p-2)
-            #push!(code.args, :(A.rawmoments[$p] += binomial($p, $k) * (A.rawmoments[$p-$k] * (inv(-N))^$k * δAB)^$k))
-            push!(code.args, :(A.rawmoments[$p] += binomial($p, $k) * (A.rawmoments[$p-$k] * (-δAB / N)^$k)))
+            push!(code.args, :(A.rawmoments[$p] += binomial($p, $k) * (A.rawmoments[$p-$k] * (-δAB * iN)^$k)))
         end
     end
     push!(code.args, quote

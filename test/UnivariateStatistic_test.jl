@@ -1,7 +1,7 @@
 @testset "UnivariateStatistic" begin
     # Test for the UnivariateStatistic struct
     A = UnivariateStatistic(2, 0.5)
-    B = UnivariateStatistic(1, Float32)
+    B = UnivariateStatistic(Float32, 1)
 
     @test A == UnivariateStatistic(Float64, 2, 0.5)
     @test A.rawmoments == [0.5, 0.0]
@@ -11,8 +11,6 @@
 
     @test @inferred mean(A) == 0.5
     @test @inferred isnan(var(A))
-    @test @inferred isnan(skewness(A))
-    @test @inferred isnan(kurtosis(A))
     @test @inferred nobs(A) == 1
 
     @testset "push! merge! tests for first two moments" begin
@@ -30,21 +28,21 @@
         @test @inferred mean(C) == 0.5
         @test @inferred var(C; corrected=false) == 0.25
 
-        E = UnivariateStatistic(2, Float32)
+        E = UnivariateStatistic(Float32, 2)
         push!(E, ones(Float32, 10))
-        F = UnivariateStatistic(2, Float64)
+        F = UnivariateStatistic(Float64, 2)
         @inferred push!(F, zeros(Float32, 10))
         @inferred merge!(F, E)
         @test mean(F) == 0.5
         @test eltype(F) == Float64
 
-        F = UnivariateStatistic(2, Float64)
-        E = UnivariateStatistic(2, Float32)
+        F = UnivariateStatistic(Float64, 2)
+        E = UnivariateStatistic(Float32, 2)
         push!(F, zeros(Float32, 10))
         @test merge!(F, E) == UnivariateStatistic([0.0, 0.0], 10)
 
-        F = UnivariateStatistic(1, Float64)
-        E = UnivariateStatistic(1, Float32)
+        F = UnivariateStatistic(Float64, 1)
+        E = UnivariateStatistic(Float32, 1)
         push!(F, zeros(Float32, 10))
         push!(E, zeros(Float32, 10))
         @test @inferred merge(F, E) == UnivariateStatistic([0.0], 20)
@@ -54,6 +52,8 @@
     @testset "higher moments" begin
         x = 1e9 .+ (randn(10^6)) .^ 2
         A = UnivariateStatistic(4)
+        @test @inferred isnan(skewness(A))
+        @test @inferred isnan(kurtosis(A))
         push!(A, x)
         @test @inferred mean(A) ≈ mean(x)
         @test @inferred isapprox(var(A), var(x); rtol=1e-6)
