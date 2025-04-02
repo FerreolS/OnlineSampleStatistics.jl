@@ -21,9 +21,8 @@ push!(A, 4.0)  # Add a new data point
 mutable struct UnivariateStatistic{T,K,I}
     rawmoments::Vector{T}
     weights::I
-    function UnivariateStatistic(rawmoments::Vector{T}, weights::I) where {T,I}
+    function UnivariateStatistic(rawmoments::Vector{T}, weights::I, K=length(rawmoments)) where {T,I}
         nonnegative(weights) || throw(ArgumentError("weights can't be negative"))
-        K = length(rawmoments)
         new{T,K,I}(rawmoments, weights)
     end
 end
@@ -67,8 +66,9 @@ Constructs a `UnivariateStatistic` object  of type `T` with a single sample `x`.
 - `K::Int`: The number of moments to store.
 - `x`: The sample to be converted to type `T` and passed to the constructor.
 """
-UnivariateStatistic(K::Int, x::T) where {T<:Number} = UnivariateStatistic(vcat(x, zeros(T, K - 1)), 1)
-UnivariateStatistic(K::Int, T::Type) = UnivariateStatistic(zeros(T, K), 0)
+UnivariateStatistic(K::Int, x::T) where {T<:Number} = UnivariateStatistic(vcat(x, zeros(T, K - 1)), 1, K)
+UnivariateStatistic(T::Type, K::Int) = UnivariateStatistic(zeros(T, K), 0, K)
+UnivariateStatistic(K::Int) = UnivariateStatistic(Float64, K)
 UnivariateStatistic(::Type{T}, K::Int, x) where {T} = UnivariateStatistic(K, T.(x))
 """
     UnivariateStatistic(K::Int, x::AbstractArray{T}) where {T<:Number}
@@ -144,15 +144,22 @@ end
 
 
 function StatsBase.skewness(A::UnivariateStatistic{T,K,Int}) where {T,K}
+    3 ≤ K || throw(ArgumentError("third moment is not available for type $(typeof(A))"))
     N = nobs(A)
     N < 2 && return T(NaN)
-    return sqrt(get_rawmoments(A, 3) / N)
+    cm2, cm3 = A.rawmoments[2:3]
+    cm2 == 0 && return T(NaN)
+    return cm3 / sqrt(cm2 * cm2 * cm2 / N)
 end
 
 function StatsBase.kurtosis(A::UnivariateStatistic{T,K,Int}) where {T,K}
+    3 ≤ K || throw(ArgumentError("third moment is not available for type $(typeof(A))"))
     N = nobs(A)
     N < 2 && return T(NaN)
-    return get_rawmoments(A, 4) / N
+    cm2 = A.rawmoments[2]
+    cm2 == 0 && return T(NaN)
+    cm4 = A.rawmoments[4]
+    return (cm4 / (cm2 * cm2 / N)) - 3.0
 end
 
 """
@@ -305,16 +312,19 @@ end
         A.weights = N
         μA, MA = A.rawmoments[1:2]
         δAB = (b - μA)
+    end)
+    for p in P:-1:3
+        #push!(code.args, :(A.rawmoments[$p] += ((inv(-N))^$p * (N - 1) + (inv(N) * (N - 1))^$p) * δAB))
+        push!(code.args, :(A.rawmoments[$p] += (NA * (inv(-N))^$p + ((NA) / N)^$p) * δAB^$p))
+        for k in 1:(p-2)
+            #push!(code.args, :(A.rawmoments[$p] += binomial($p, $k) * (A.rawmoments[$p-$k] * (inv(-N))^$k * δAB)^$k))
+            push!(code.args, :(A.rawmoments[$p] += binomial($p, $k) * (A.rawmoments[$p-$k] * (-δAB / N)^$k)))
+        end
+    end
+    push!(code.args, quote
         A.rawmoments[1] += inv(N) * δAB
         A.rawmoments[2] += inv(N) * NA * δAB^2
     end)
-    for p in 3:P
-        #push!(code.args, :(A.rawmoments[$p] += ((inv(-N))^$p * (N - 1) + (inv(N) * (N - 1))^$p) * δAB))
-        push!(code.args, :(A.rawmoments[$p] += ((N - 1) / (-N)^$p + ((N - 1) / N)^$p) * δAB^$p))
-        for k in 1:(p-2)
-            push!(code.args, :(A.rawmoments[$p] += binomial($p, $k) * (A.rawmoments[$p-$k] * (inv(-N))^$k * δAB)^$k))
-        end
-    end
     push!(code.args, :(return A))
     return code
 end
