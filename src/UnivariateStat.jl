@@ -6,12 +6,12 @@ A mutable struct for managing univariate statistics, such as mean, variance, ske
 This struct supports online (incremental) updates to the statistics.
 
 ## Fields
-- `rawmoments::Vector{T}`: A vector of size K containing the raw moments of the data.
 - `weights::I`: the total weight or count (when I==Int) of the data.
+- `rawmoments::Vector{T}`: A vector of size K containing the raw moments of the data.
 
 ## Example
 ```julia
-A = UnivariateStatistic(2, [1.0, 2.0, 3.0])
+A = UnivariateStatistic([1.0, 2.0, 3.0],2,)
 mean(A)  # Calculate the mean (2.0)
 var(A)  # Calculate the variance (1.0)
 push!(A, 4.0)  # Add a new data point
@@ -42,7 +42,7 @@ WeightTraits(A::UnivariateStatistic) = ProbabilityWeights()
 WeightTraits(A::UnivariateStatistic{T,K,Int}) where {T,K} = FrequencyWeights()
  =#
 """
-    UnivariateStatistic(K::Int, x::T) where {T<:Number}
+    UnivariateStatistic(x::T,K::Int) where {T<:Number}
 
 Constructs a `UnivariateStatistic` object of type `T` with `K` moments from a single sample `x`. 
 The first moment (the mean) is then `x` and the remaining moments are zeros of type `T`. 
@@ -69,7 +69,7 @@ Constructs an empty `UnivariateStatistic` object of type Float64 with `K` moment
 
 ---
 
-    UnivariateStatistic(::Type{T}, K::Int, x) where {T}
+    UnivariateStatistic(::Type{T}, x, K::Int) where {T}
 
 Constructs a `UnivariateStatistic` object  of type `T` with a single sample `x`.
 
@@ -85,10 +85,10 @@ end
 
 UnivariateStatistic{T,K,I}(weights::I, rawmoments...) where {T,K,I} = UnivariateStatistic{T,K,I}(weights, vcat(rawmoments...))
 
-UnivariateStatistic(K::Int, x::T) where {T<:Number} = UnivariateStatistic(vcat(x, zeros(T, K - 1)), 1, K)
-UnivariateStatistic(T::Type, K::Int) = UnivariateStatistic(zeros(T, K), 0, K)
+UnivariateStatistic(x::T, K::Int) where {T<:Number} = UnivariateStatistic(1, vcat(x, zeros(T, K - 1)))
+UnivariateStatistic(T::Type, K::Int) = UnivariateStatistic(0, zeros(T, K))
 UnivariateStatistic(K::Int) = UnivariateStatistic(Float64, K)
-UnivariateStatistic(::Type{T}, K::Int, x) where {T} = UnivariateStatistic(K, T.(x))
+UnivariateStatistic(::Type{T}, x, K::Int,) where {T} = UnivariateStatistic(T.(x), K)
 """
     UnivariateStatistic(K::Int, x::AbstractArray{T}) where {T<:Number}
 
@@ -99,7 +99,7 @@ Constructs a UnivariateStatistic object storing the first `K` moments  from the 
 - `x::AbstractArray{T}`: array of samples where `T` is a subtype of `Number`.
 """
 
-function UnivariateStatistic(K::Int, x::AbstractArray{T}) where {T<:Number}
+function UnivariateStatistic(x::AbstractArray{T}, K::Int) where {T<:Number}
     A = UnivariateStatistic(T, K)
     push!(A, x)
     return A
@@ -113,7 +113,7 @@ Check if the input `x` is nonnegative (greater than or equal to zero).
 nonnegative(x) = x ≥ 0
 
 Base.zero(::T) where {T<:UnivariateStatistic} = zero(T)
-Base.zero(::Type{UnivariateStatistic{T,K,I}}) where {T,K,I} = UnivariateStatistic(zeros(T, K), zero(I))
+Base.zero(::Type{UnivariateStatistic{T,K,I}}) where {T,K,I} = UnivariateStatistic(zero(I), zeros(T, K))
 Base.eltype(::UnivariateStatistic{T}) where {T} = T
 
 Base.:(==)(A::UnivariateStatistic{T,K,I}, B::UnivariateStatistic{T,K,I}) where {T,K,I} = A.rawmoments == B.rawmoments && A.weights == B.weights
