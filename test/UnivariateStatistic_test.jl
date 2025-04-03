@@ -18,7 +18,7 @@
         push!(C, ones(10))
         @test @inferred mean(C) == 1.0
         @test @inferred var(C) == 0.0
-        @test_throws ArgumentError UnivariateStatistic(-1, 1.0)
+        @test_throws ArgumentError UnivariateStatistic(-1, [1.0])
 
 
         D = zero(typeof(A))

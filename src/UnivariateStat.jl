@@ -243,8 +243,8 @@ end
         end
     end
     push!(code.args, quote
-        A.rawmoments[1] += inv(N) * δBA
-        A.rawmoments[2] += inv(N) * NA * δBA^2
+        A.rawmoments[1] += iN * δBA
+        A.rawmoments[2] += iN * NA * δBA^2
     end)
     push!(code.args, :(return A))
     return code

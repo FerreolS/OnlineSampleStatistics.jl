@@ -133,7 +133,7 @@ end
     end
     push!(code.args, quote
         N = add!(weights(A), 1)
-        NA = N .+ 1
+        NA = N .- 1
         δBA = (b .- get_rawmoments(A, 1))
         iN = inv.(N)
     end)
@@ -144,8 +144,8 @@ end
         end
     end
     push!(code.args, quote
-        @. $get_rawmoments(A, 1) += inv(N) * δBA
-        @. $get_rawmoments(A, 2) += inv(N) * NA * δBA^2
+        @. $get_rawmoments(A, 1) += iN * δBA
+        @. $get_rawmoments(A, 2) += iN * NA * δBA^2
     end)
     push!(code.args, :(return A))
     return code
