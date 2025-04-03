@@ -1,7 +1,6 @@
 using ZippedArrays, StructuredArrays
 
 #= getters on AbstractArrays that are not  IndependentStatistic =#
-
 get_rawmoments(x::AbstractArray{UnivariateStatistic}) = map(x -> x.rawmoments, x)
 get_weights(x::AbstractArray{UnivariateStatistic}) = map(x -> x.weights, x)
 StatsAPI.weights(x::AbstractArray{UnivariateStatistic}) = map(x -> x.weights, x)
@@ -51,7 +50,7 @@ StatsAPI.nobs(x::IndependentStatistic) = @inbounds x.args[1]
 Statistics.mean(A::IndependentStatistic) = get_rawmoments(A, 1)
 
 function Statistics.var(A::IndependentStatistic{T,N,K}; corrected=true) where {T,N,K}
-    3 ≤ K || throw(ArgumentError("third moment is not available for type $(typeof(A))"))
+    2 ≤ K || throw(ArgumentError("second moment is not available for type $(typeof(A))"))
     W = nobs(A)
     if corrected
         return @. get_rawmoments(A, 2) / (W - 1)
@@ -70,7 +69,7 @@ function StatsBase.skewness(A::IndependentStatistic{T,N,K}) where {T,N,K}
 end
 
 function StatsBase.kurtosis(A::IndependentStatistic{T,N,K}) where {T,N,K}
-    3 ≤ K || throw(ArgumentError("third moment is not available for type $(typeof(A))"))
+    4 ≤ K || throw(ArgumentError("fourth moment is not available for type $(typeof(A))"))
     W = nobs(A)
     cm2 = get_rawmoments(A, 2)
     cm4 = get_rawmoments(A, 4)
