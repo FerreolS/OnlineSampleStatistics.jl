@@ -18,6 +18,8 @@
         push!(C, ones(10))
         @test @inferred mean(C) == 1.0
         @test @inferred var(C) == 0.0
+        @test_throws ArgumentError UnivariateStatistic(-1, 1.0)
+
 
         D = zero(typeof(A))
         push!(D, zeros(10))
@@ -47,6 +49,7 @@
         push!(E, zeros(Float32, 10))
         @test @inferred merge(F, E) == UnivariateStatistic(20, [0.0])
         @test @inferred merge(E, F) == UnivariateStatistic(20, [0.0])
+
     end
 
     @testset "higher moments" begin

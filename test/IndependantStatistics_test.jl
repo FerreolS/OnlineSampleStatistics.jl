@@ -23,6 +23,9 @@ using ZippedArrays, StructuredArrays
 
         @inferred(push!(A, -1 .* [1.0 2.0 3.0; 4.0 5.0 6.0; 7.0 8.0 9.0]))
         @test @inferred(var(A; corrected=false)) == [1.0 2.0 3.0; 4.0 5.0 6.0; 7.0 8.0 9.0] .^ 2
+        @test @inferred(var(A)) == 2 .* [1.0 2.0 3.0; 4.0 5.0 6.0; 7.0 8.0 9.0] .^ 2
+        @test @inferred(skewnness(A)) == [0.75 0.75 0.75; 0.75 0.75 0.75; 0.75 0.75 0.75]
+        @test @inferred(kurtosis(A)) == [1.3125 1.3125 1.3125; 1.3125 1.3125 1.3125; 1.3125 1.3125 1.3125]
     end
 
     #=     # Test skewness calculation
