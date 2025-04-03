@@ -1,5 +1,4 @@
 module OnlineSampleStatistics
-using ZippedArrays
 
 export UnivariateStatistic,
     mean,
@@ -7,9 +6,11 @@ export UnivariateStatistic,
     nobs,
     skewness,
     kurtosis,
-    weights
+    weights,
+    IndependentStatistic
 
 
 include("UnivariateStat.jl")
+include("IndependantStatistics.jl")
 
 end

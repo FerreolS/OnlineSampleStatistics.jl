@@ -19,12 +19,18 @@ push!(A, 4.0)  # Add a new data point
 """
 
 mutable struct UnivariateStatistic{T,K,I}
-    rawmoments::Vector{T}
     weights::I
-    function UnivariateStatistic(rawmoments::Vector{T}, weights::I, K=length(rawmoments)) where {T,I}
+    rawmoments::Vector{T}
+    function UnivariateStatistic{T,K,I}(weights::I, rawmoments::Vector{T}) where {T,K,I}
+        K == length(rawmoments) || throw(ArgumentError("The length of rawmoments $(length(rawmoments)) must be equal to $K"))
         nonnegative(weights) || throw(ArgumentError("weights can't be negative"))
-        new{T,K,I}(rawmoments, weights)
+        new{T,K,I}(weights, rawmoments)
     end
+    function UnivariateStatistic{T,K,I}(weights::I, rawmoments::NTuple{K,T}) where {T,K,I}
+        nonnegative(weights) || throw(ArgumentError("weights can't be negative"))
+        new{T,K,I}(weights, vcat(rawmoments...))
+    end
+
 end
 
 #= Future traits system 
@@ -72,6 +78,13 @@ Constructs a `UnivariateStatistic` object  of type `T` with a single sample `x`.
 - `K::Int`: The number of moments to store.
 - `x`: The sample to be converted to type `T` and passed to the constructor.
 """
+function UnivariateStatistic(weights::I, rawmoments::Vector{T}) where {T,I}
+    K = length(rawmoments)
+    UnivariateStatistic{T,K,I}(weights, rawmoments)
+end
+
+UnivariateStatistic{T,K,I}(weights::I, rawmoments...) where {T,K,I} = UnivariateStatistic{T,K,I}(weights, vcat(rawmoments...))
+
 UnivariateStatistic(K::Int, x::T) where {T<:Number} = UnivariateStatistic(vcat(x, zeros(T, K - 1)), 1, K)
 UnivariateStatistic(T::Type, K::Int) = UnivariateStatistic(zeros(T, K), 0, K)
 UnivariateStatistic(K::Int) = UnivariateStatistic(Float64, K)
