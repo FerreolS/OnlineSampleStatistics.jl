@@ -85,8 +85,10 @@ end
 
 UnivariateStatistic{T,K,I}(weights::I, rawmoments...) where {T,K,I} = UnivariateStatistic{T,K,I}(weights, vcat(rawmoments...))
 
-UnivariateStatistic(x::T, K::Int) where {T<:Number} = UnivariateStatistic(1, vcat(x, zeros(T, K - 1)))
-UnivariateStatistic(T::Type, K::Int) = UnivariateStatistic(0, zeros(T, K))
+UnivariateStatistic(x::T, K::Int) where {T<:Number} = UnivariateStatistic(x, 1, K)
+UnivariateStatistic(x::T, weight::Number, K::Int) where {T<:Number} = UnivariateStatistic(weight, vcat(x, zeros(T, K - 1)))
+UnivariateStatistic(T::Type, K::Int) = UnivariateStatistic(T, Int, K)
+UnivariateStatistic(T::Type, TW::Type, K::Int) = UnivariateStatistic(zero(TW), zeros(T, K))
 UnivariateStatistic(K::Int) = UnivariateStatistic(Float64, K)
 UnivariateStatistic(::Type{T}, x, K::Int,) where {T} = UnivariateStatistic(T.(x), K)
 """
@@ -105,12 +107,20 @@ function UnivariateStatistic(x::AbstractArray{T}, K::Int) where {T<:Number}
     return A
 end
 
+function UnivariateStatistic(x::AbstractArray{T}, w::AbstractArray{TW}, K::Int) where {T<:Number,TW<:Number}
+    A = UnivariateStatistic(T, TW, K)
+    nonnegative(w) || throw(ArgumentError("weights can't be negative"))
+    push!(A, x, w)
+    return A
+end
+
 """
     nonnegative(x)
 
 Check if the input `x` is nonnegative (greater than or equal to zero).
 """
 nonnegative(x) = x ≥ 0
+nonnegative(x::AbstractArray) = all(x .>= 0)
 
 Base.zero(::T) where {T<:UnivariateStatistic} = zero(T)
 Base.zero(::Type{UnivariateStatistic{T,K,I}}) where {T,K,I} = UnivariateStatistic(zero(I), zeros(T, K))
@@ -151,11 +161,16 @@ Compute the mean of a UnivariateStatistic `A`
 """
 Statistics.mean(A::UnivariateStatistic{T,K,I}) where {T,K,I} = get_moments(A, 1)
 
-function Statistics.var(A::UnivariateStatistic{T,K,Int}; corrected=true) where {T,K}
+function Statistics.var(A::UnivariateStatistic{T,K,W}; corrected=true) where {T,K,W}
     N = nobs(A)
     N == 0 && return T(NaN)
     if corrected
-        return get_rawmoments(A, 2) / (N - 1)
+        if Int <: Integer
+            return get_rawmoments(A, 2) / (N - 1)
+        else
+            @warn("The number of samples is not an integer. The variance is not corrected.")
+            return get_rawmoments(A, 2) / N
+        end
     else
         return get_rawmoments(A, 2) / N
     end
@@ -203,38 +218,39 @@ function Base.push!(A::UnivariateStatistic{T}, y::T2) where {T,T2}
     return A
 end
 
-function Base.push!(A::UnivariateStatistic{T}, b::T2) where {T,T2<:Number}
+@inline increment_weights!(A::UnivariateStatistic, x) = A.weights += x
+
+Base.push!(A::UnivariateStatistic, b::Number) = push!(A, b, 1)
+
+function Base.push!(A::UnivariateStatistic{T}, b::T2, w) where {T,T2<:Number}
     promote_type(T, T2) == T || throw(ArgumentError("The input type $T2 is not promotable to $T"))
-    push!(A, T(b))
+    push!(A, T(b), w)
 end
 
 
-function Base.push!(A::UnivariateStatistic{T,1}, b::T) where {T<:Number}
-    A.rawmoments[1] += inv(A.weights += 1) * (b - A.rawmoments[1])
+function Base.push!(A::UnivariateStatistic{T,1}, b::T, w::Number) where {T<:Number}
+    A.rawmoments[1] += inv(increment_weights!(A, w)) * (b - A.rawmoments[1])
     return A
 end
 
-function Base.push!(A::UnivariateStatistic{T,2}, b::T) where {T<:Number}
+function Base.push!(A::UnivariateStatistic{T,2}, b::T, w::Number) where {T<:Number}
     NA = weights(A)
-    N = NA + 1
-    A.weights = N
+    iN = inv(increment_weights!(A, w))
     μA, MA = A.rawmoments
 
     δBA = (b - μA)
-    A.rawmoments[1] += inv(N) * δBA
-    A.rawmoments[2] += inv(N) * NA * δBA^2
+    A.rawmoments[1] += iN * δBA
+    A.rawmoments[2] += iN * NA * δBA^2
     return A
 end
 
 
-@generated function Base.push!(A::UnivariateStatistic{T,P}, b::T) where {P,T<:Number}
+@generated function Base.push!(A::UnivariateStatistic{T,P}, b::T, w::Number) where {P,T<:Number}
     code = Expr(:block)
     push!(code.args, quote
         NA = weights(A)
-        N = NA + 1
-        A.weights = N
+        iN = inv(increment_weights!(A, w))
         δBA = (b - A.rawmoments[1])
-        iN = inv(N)
     end)
     for p in P:-1:3
         push!(code.args, :(A.rawmoments[$p] += (NA * (-iN)^$p + (NA * iN)^$p) * δBA^$p))
@@ -267,7 +283,7 @@ B = UnivariateStatistic(2, [2.0, 1.5])
 merge!(A, B)
 ```
 """
-function Base.merge(A::UnivariateStatistic{T1,1,I}, B::UnivariateStatistic{T2,K,I}) where {T1,T2,K,I}
+function Base.merge(A::UnivariateStatistic{T1,1}, B::UnivariateStatistic{T2,K}) where {T1,T2,K}
     T = promote_type(T1, T2)
     if T == T1
         C = copy(A)

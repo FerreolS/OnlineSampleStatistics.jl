@@ -101,22 +101,22 @@ end
 
 
 
-function add!(A::MutableUniformArray, x::Number)
+function increment!(A::MutableUniformArray, x::Number)
     StructuredArrays.setvalue!(A, StructuredArrays.value(A) + x)
     return A
 end
-add!(A::AbstractArray, x) = A .+= x
+increment!(A::AbstractArray, x) = A .+= x
 
 
 function _push!(A::IndependentStatistic{T,N,1}, b::AbstractArray{T,N}) where {T,N}
     w = get_weights(A)
-    add!(w, 1)
+    increment!(w, 1)
     @. $get_rawmoments(A, 1) += inv(w) * (b - $get_rawmoments(A, 1))
     return A
 end
 
 function _push!(A::IndependentStatistic{T,D,2}, b::AbstractArray{T,D}) where {T,D}
-    N = add!(weights(A), 1)
+    N = increment!(weights(A), 1)
     NA = N .- 1
     δBA = (b .- get_rawmoments(A, 1))
     iN = inv.(N)
@@ -132,7 +132,7 @@ end
         return code
     end
     push!(code.args, quote
-        N = add!(weights(A), 1)
+        N = increment!(weights(A), 1)
         NA = N .- 1
         δBA = (b .- get_rawmoments(A, 1))
         iN = inv.(N)
