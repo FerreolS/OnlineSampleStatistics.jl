@@ -17,24 +17,48 @@ IndependentStatistic{T,N,K,W} = ZippedArray{UnivariateStatistic{T,K,W},N,K2,I,A}
 IndependentStatistic(K::Int, sz::NTuple{N,Int}) where {N} = IndependentStatistic(Float64, K, sz)
 
 function IndependentStatistic(::Type{T}, K::Int, sz::NTuple{N,Int}) where {T,N}
+    K > 0 || throw(ArgumentError("Moment of order $K <= 0 undefined"))
     rawmoments = (zeros(T, sz) for _ in 1:K)
     ZippedArray{UnivariateStatistic{T,K,Int}}(MutableUniformArray(0, sz...), rawmoments...)
 end
 
-function IndependentStatistic(K::Int, x::AbstractArray{T,N}; dims=nothing) where {T,N}
+function IndependentStatistic(::Type{T}, K::Int, sz::NTuple{N,Int}, ::Type{TW}) where {TW,T,N}
+    K > 0 || throw(ArgumentError("Moment of order $K <= 0 undefined"))
+    rawmoments = (zeros(T, sz) for _ in 1:K)
+    weights = zeros(TW, sz)
+    ZippedArray{UnivariateStatistic{T,K,Int}}(weights, rawmoments...)
+end
+
+function IndependentStatistic(K::Int, x::AbstractArray{T,N}, w::AbstractArray{TW,N}; dims=nothing) where {TW,T,N}
+    size(x) == size(w) || throw(ArgumentError("IndependentStatistic : size(x) != size(w)"))
     if dims === nothing
-        A = IndependentStatistic(T, K, size(x))
-        push!(A, x)
+        A = IndependentStatistic(T, K, size(x), TW)
+        push!(A, x, w)
     else
+        length(dims) > N || throw(ArgumentError("IndependentStatistic : length(dims) > N"))
         sz = vcat(size(x)...)
         sz[vcat(dims...)] .= 1
-        A = IndependentStatistic(T, K, NTuple{N,Int}(sz))
-        foreach(y -> push!(A, reshape(y, sz...)), eachslice(x; dims=dims))
+        A = IndependentStatistic(T, K, NTuple{N,Int}(sz), TW)
+        foreach((y, z) -> push!(A, reshape(y, sz...), reshape(z, sz...)), eachslice(zip(x, w); dims=dims))
     end
     return A
 end
 
 
+
+function IndependentStatistic(K::Int, x::AbstractArray{T,N}; dims=nothing) where {T,N}
+    if dims === nothing
+        A = IndependentStatistic(T, K, size(x))
+        push!(A, x, 1)
+    else
+        length(dims) > N || throw(ArgumentError("IndependentStatistic : length(dims) > N"))
+        sz = vcat(size(x)...)
+        sz[vcat(dims...)] .= 1
+        A = IndependentStatistic(T, K, NTuple{N,Int}(sz))
+        foreach(y -> push!(A, reshape(y, sz...), 1), eachslice(x; dims=dims))
+    end
+    return A
+end
 
 
 #= getters on IndependentStatistic =#
@@ -80,10 +104,12 @@ end
 
 
 
-Base.push!(A::IndependentStatistic{T}, x::AbstractArray{T2}) where {T,T2} = push!(A, T.(x))
+Base.push!(A::IndependentStatistic{T}, x::AbstractArray{T2}, w) where {T,T2} = push!(A, T.(x), w)
 
-function Base.push!(A::IndependentStatistic{T,N,K,W}, x::AbstractArray{T,N2}) where {T,N,N2,K,W}
+function Base.push!(A::IndependentStatistic{T,N,K,W}, x::AbstractArray{T,N2}, w::AbstractArray{T,N2}) where {T,N,N2,K,W}
     N2 ≥ N || throw(ArgumentError("push! : N2 < N"))
+    size(x) == size(w) || throw(ArgumentError("IndependentStatistic : size(x) != size(w)"))
+
     szx = vcat(size(x)...)
     szA = vcat(size(A)...)
 
@@ -95,7 +121,25 @@ function Base.push!(A::IndependentStatistic{T,N,K,W}, x::AbstractArray{T,N2}) wh
     # mapslices(y -> _push!(A, reshape(y, szA...)), x; dims=(1:ndims(x))[.!singleton])
     slc = NTuple{sum(singleton),Int}((1:N2)[singleton])
     #foreach(y -> _push!(A, reshape(y, szA...)), eachslice(x; dims=slc))
-    foreach(y -> push!(A, y), eachslice(x; dims=slc, drop=(length(sgltidx) == length(szA))))
+    foreach((y, z) -> push!(A, y, z), eachslice(zip(x, w); dims=slc, drop=(length(sgltidx) == length(szA))))
+    return A
+end
+
+function Base.push!(A::IndependentStatistic{T,N}, x::AbstractArray{T,N2}, w::Number) where {T,N,N2}
+    N2 ≥ N || throw(ArgumentError("push! : N2 < N"))
+
+    szx = vcat(size(x)...)
+    szA = vcat(size(A)...)
+
+    sgltidx = findall(szA .!= 1)
+    singleton = trues(N2)
+    singleton[sgltidx] .= false
+
+    szA[sgltidx] == szx[sgltidx] || throw(ArgumentError("push! : size(A)=$(size(A)) != $(size(x))"))
+    # mapslices(y -> _push!(A, reshape(y, szA...)), x; dims=(1:ndims(x))[.!singleton])
+    slc = NTuple{sum(singleton),Int}((1:N2)[singleton])
+    #foreach(y -> _push!(A, reshape(y, szA...)), eachslice(x; dims=slc))
+    foreach(y -> push!(A, y, w), eachslice(x; dims=slc, drop=(length(sgltidx) == length(szA))))
     return A
 end
 
@@ -108,15 +152,15 @@ end
 increment!(A::AbstractArray, x) = A .+= x
 
 
-function _push!(A::IndependentStatistic{T,N,1}, b::AbstractArray{T,N}) where {T,N}
-    w = get_weights(A)
-    increment!(w, 1)
-    @. $get_rawmoments(A, 1) += inv(w) * (b - $get_rawmoments(A, 1))
+function _push!(A::IndependentStatistic{T,D,1}, b::AbstractArray{T,D}, w) where {T,D}
+    N = get_weights(A)
+    increment!(N, w)
+    @. $get_rawmoments(A, 1) += inv(N) * (b - $get_rawmoments(A, 1))
     return A
 end
 
-function _push!(A::IndependentStatistic{T,D,2}, b::AbstractArray{T,D}) where {T,D}
-    N = increment!(weights(A), 1)
+function _push!(A::IndependentStatistic{T,D,2}, b::AbstractArray{T,D}, w) where {T,D}
+    N = increment!(weights(A), w)
     NA = N .- 1
     δBA = (b .- get_rawmoments(A, 1))
     iN = inv.(N)
@@ -125,14 +169,14 @@ function _push!(A::IndependentStatistic{T,D,2}, b::AbstractArray{T,D}) where {T,
     return A
 end
 
-@generated function Base.push!(A::IndependentStatistic{T,D,P}, b::AbstractArray{T,D}) where {P,D,T<:Number}
+@generated function Base.push!(A::IndependentStatistic{T,D,P}, b::AbstractArray{T,D}, w::W) where {P,D,T<:Number,T2<:Number,W<:Union{Number,AbstractArray{T2,D}}}
     code = Expr(:block)
     if P < 3
         push!(code.args, :(_push!(A, b)))
         return code
     end
     push!(code.args, quote
-        N = increment!(weights(A), 1)
+        N = increment!(weights(A), w)
         NA = N .- 1
         δBA = (b .- get_rawmoments(A, 1))
         iN = inv.(N)
