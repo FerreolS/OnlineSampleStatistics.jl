@@ -15,7 +15,7 @@
 
 ### Precision
 
-Precisions are similar for both packages on centered data. However, `OnlineStats.jl` is less  numerically stable and has catastrophic precision issues on non-centered data. 
+Precisions are similar for both packages on centered data. However, `OnlineStats.jl` is less  numerically stable and suffers from catastrophic precision issues on non-centered data (leading to negative variance).
 
 #### Centered data
 
@@ -85,6 +85,8 @@ julia> kurtosis(m) , kurtosis(A), kurtosis(x)
 ```
 
 ### Performance
+Performance is similar for both packages for the first two moments. However additional computations in `OninesSampleStatistics.jl` to ensure numerical precision for higher moments scale exponentially with the number of stored moment.
+
 
 #### Mean
 
@@ -118,16 +120,18 @@ julia> @btime push!(A,x);
 
 ```julia-repl
 julia> m = Moments();
-julia> A = UnivariateStatistic(4); # accumulating moments up to 4th
-
-julia> @btime fit!(m,x)
-  504.927 ms (0 allocations: 0 bytes)
-
-julia> @btime push!(A,x)
-  2.135 s (0 allocations: 0 bytes)
-
 julia> A = UnivariateStatistic(3); # accumulating moments up to 3th
 julia> @btime push!(A,x)
   575.805 ms (0 allocations: 0 bytes)
 
+julia> @btime fit!(m,x)
+  504.927 ms (0 allocations: 0 bytes)
+
+julia> A = UnivariateStatistic(4); # accumulating moments up to 4th
+julia> @btime push!(A,x)
+  2.135 s (0 allocations: 0 bytes)
+
+julia> A = UnivariateStatistic(5); # accumulating moments up to 5th
+julia> @btime push!(A,x)
+  3.898 s (0 allocations: 0 bytes)
 ```
