@@ -3,9 +3,9 @@ using ZippedArrays, StructuredArrays
 #= getters on AbstractArrays that are not  IndependentStatistic =#
 get_rawmoments(x::AbstractArray{UnivariateStatistic}) = map(x -> x.rawmoments, x)
 get_weights(x::AbstractArray{UnivariateStatistic}) = map(x -> x.weights, x)
-StatsAPI.weights(x::AbstractArray{UnivariateStatistic}) = map(x -> x.weights, x)
+weights(x::AbstractArray{UnivariateStatistic}) = map(x -> x.weights, x)
 get_rawmoments(x::AbstractArray{UnivariateStatistic}, k::Int) = map(y -> get_rawmoments(y, k), x)
-StatsAPI.nobs(x::AbstractArray{UnivariateStatistic{T,K,Int}}) where {T,K} = map(x -> nobs(x), x)
+StatsBase.nobs(x::AbstractArray{UnivariateStatistic{T,K,Int}}) where {T,K} = map(x -> nobs(x), x)
 get_moments(x::AbstractArray{UnivariateStatistic}, k::Int) = map(y -> get_moments(y, k), x)
 
 #===  IndependentStatistic ===#
@@ -41,11 +41,11 @@ end
 
 get_rawmoments(x::IndependentStatistic{T,N,K,I}) where {T,N,K,I} = @inbounds x.args[2:K+1]
 get_weights(x::IndependentStatistic) = @inbounds x.args[1]
-StatsAPI.weights(x::IndependentStatistic) = @inbounds x.args[1]
+weights(x::IndependentStatistic) = @inbounds x.args[1]
 get_rawmoments(x::IndependentStatistic, k::Int) = @inbounds x.args[1+k]
 
 #= statistic functions =#
-StatsAPI.nobs(x::IndependentStatistic) = @inbounds x.args[1]
+StatsBase.nobs(x::IndependentStatistic) = @inbounds x.args[1]
 
 Statistics.mean(A::IndependentStatistic) = get_rawmoments(A, 1)
 

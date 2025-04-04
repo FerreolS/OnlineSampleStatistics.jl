@@ -1,4 +1,4 @@
-using StatsAPI, Statistics, StatsBase
+using Statistics, StatsBase
 """
     UnivariateStatistic{T,K,I}
 
@@ -119,8 +119,8 @@ Base.eltype(::UnivariateStatistic{T}) where {T} = T
 Base.:(==)(A::UnivariateStatistic{T,K,I}, B::UnivariateStatistic{T,K,I}) where {T,K,I} = A.rawmoments == B.rawmoments && A.weights == B.weights
 Base.copy(A::UnivariateStatistic) = deepcopy(A)
 
-StatsAPI.nobs(A::UnivariateStatistic{T,K,Int}) where {T,K} = A.weights
-StatsAPI.weights(A::UnivariateStatistic) = A.weights
+StatsBase.nobs(A::UnivariateStatistic{T,K,Int}) where {T,K} = A.weights
+weights(A::UnivariateStatistic{T,K,W}) where {T,K,W<:Number} = A.weights
 
 
 function get_rawmoments(A::UnivariateStatistic{T,K,I}, k::Int) where {T,K,I}
@@ -227,7 +227,7 @@ function Base.push!(A::UnivariateStatistic{T,2}, b::T) where {T<:Number}
 end
 
 
-@generated function Base.push!(A::UnivariateStatistic{T,P,Int}, b::T) where {P,T<:Number}
+@generated function Base.push!(A::UnivariateStatistic{T,P}, b::T) where {P,T<:Number}
     code = Expr(:block)
     push!(code.args, quote
         NA = weights(A)

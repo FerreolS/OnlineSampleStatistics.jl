@@ -85,7 +85,7 @@ julia> kurtosis(m) , kurtosis(A), kurtosis(x)
 ```
 
 ### Performance
-Performance is similar for both packages for the first two moments. However additional computations in `OninesSampleStatistics.jl` to ensure numerical precision for higher moments scale exponentially with the number of stored moment.
+Performance is similar for both packages for the first two moments. However the additional computation in `OninesSampleStatistics.jl` to ensure numerical precision for higher moments scales exponentially with the number of stored moments.
 
 
 #### Mean
