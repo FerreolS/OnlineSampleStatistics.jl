@@ -131,7 +131,10 @@ Base.zero(::Type{UnivariateStatistic{T,K,I}}) where {T,K,I} = UnivariateStatisti
 Base.eltype(::UnivariateStatistic{T}) where {T} = T
 
 Base.:(==)(A::UnivariateStatistic{T,K,I}, B::UnivariateStatistic{T,K,I}) where {T,K,I} = A.rawmoments == B.rawmoments && A.weights == B.weights
+Base.isapprox(A::UnivariateStatistic{T,K,I}, B::UnivariateStatistic{T,K,I}; kwds...) where {T,K,I} = isapprox(A.rawmoments, B.rawmoments; kwds...) && isapprox(A.weights, B.weights; kwds...)
 Base.copy(A::UnivariateStatistic) = deepcopy(A)
+
+
 
 StatsBase.nobs(A::UnivariateStatistic{T,K,Int}) where {T,K} = A.weights
 weights(A::UnivariateStatistic{T,K,W}) where {T,K,W<:Number} = A.weights

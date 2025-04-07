@@ -16,13 +16,15 @@ Statistics = "1"
 StatsBase = "0"
 StructuredArrays = "0.2"
 Test = "1"
+Transducers = "0.4"
 ZippedArrays = "0.2"
 julia = "1.6"
 
 [extras]
 StructuredArrays = "2e8cd123-6858-488d-b42d-068777248635"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+Transducers = "28d57a85-8fef-5791-bfe6-a80928e7c999"
 ZippedArrays = "8051824b-fc5e-4603-89c4-0e6ea551cb88"
 
 [targets]
-test = ["Test", "ZippedArrays", "StructuredArrays"]
+test = ["Test", "ZippedArrays", "StructuredArrays", "Transducers"]

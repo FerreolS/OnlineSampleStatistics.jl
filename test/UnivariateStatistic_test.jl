@@ -8,6 +8,7 @@
     @test A.weights == 1
     @test B.rawmoments == [0.0f0]
     @test B.weights == 0
+    @test values(A) == [0.5, 0.0]
 
     @test @inferred mean(A) == 0.5
     @test @inferred isnan(var(A))
@@ -70,5 +71,21 @@
         C = UnivariateStatistic(x2, 4)
         merge!(B, C)
         @test isapprox(A.rawmoments, B.rawmoments; rtol=1e-6)
+    end
+
+    @testset "error handling" begin
+        @test_throws ArgumentError UnivariateStatistic(2, -1)
+        @test_throws ArgumentError UnivariateStatistic(2, 0)
+        @test_throws ArgumentError UnivariateStatistic(2, 1, -1)
+        @test_throws ArgumentError UnivariateStatistic(2, 1, 0)
+    end
+    @testset " Transducers Tests" begin
+        x = 1e9 .+ (randn(10^6)) .^ 2
+        A = UnivariateStatistic(4)
+        push!(A, x)
+        B = foldxt(UnivariateStatistic(4), x)
+        @test A ≈ B
+        B = foldxd(UnivariateStatistic(4), x)
+        @test A ≈ B
     end
 end
