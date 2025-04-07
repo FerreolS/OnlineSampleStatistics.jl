@@ -259,10 +259,9 @@ function Base.push!(A::UnivariateStatistic{T,1}, b::T, w::Number) where {T<:Numb
     return A
 end
 
-function Base.push!(A::UnivariateStatistic{T,2}, b::T, w::Number) where {T<:Number}
-    w == 0 && return A
+function Base.push!(A::UnivariateStatistic{T,2}, b::T) where {T<:Number}
     NA = weights(A)
-    iN = w * inv(increment_weights!(A, w))
+    iN = inv(increment_weights!(A, 1))
     μA = A.rawmoments[1]
 
     δBA = (b - μA)
@@ -271,24 +270,40 @@ function Base.push!(A::UnivariateStatistic{T,2}, b::T, w::Number) where {T<:Numb
     return A
 end
 
+function Base.push!(A::UnivariateStatistic{T,2}, b::T, wb) where {T<:Number}
+    wb == 0 && return A
+    wa = weights(A)
+    iN = inv(increment_weights!(A, wb))
+    δBA = (b - μA)
+    BoN = -wb * iN * δBA
+    AoN = wa * iN * δBA
+    μA = A.rawmoments[1]
 
-@generated function Base.push!(A::UnivariateStatistic{T,P}, b::T, w::Number) where {P,T<:Number}
+    A.rawmoments[1] -= BoN
+    A.rawmoments[2] += wa * BoN^2 + wb * AoN^2
+    return A
+end
+
+
+@generated function Base.push!(A::UnivariateStatistic{T,P}, b::T, wb::Number) where {P,T<:Number}
     code = Expr(:block)
     push!(code.args, quote
-        w == 0 && return A
-        NA = weights(A)
-        iN = inv(increment_weights!(A, w))
+        wb == 0 && return A
+        wa = weights(A)
+        iN = inv(increment_weights!(A, wb))
         δBA = (b - A.rawmoments[1])
+        BoN = -wb * iN * δBA
+        AoN = wa * iN * δBA
     end)
     for p in P:-1:3
-        push!(code.args, :(A.rawmoments[$p] += (NA * (-iN)^$p + (NA * iN)^$p) * δBA^$p))
+        push!(code.args, :(A.rawmoments[$p] += (wa * BoN^$p + wb * AoN^$p)))
         for k in 1:(p-2)
-            push!(code.args, :(A.rawmoments[$p] += binomial($p, $k) * (A.rawmoments[$p-$k] * (-δBA * iN)^$k)))
+            push!(code.args, :(A.rawmoments[$p] += binomial($p, $k) * (A.rawmoments[$p-$k] * BoN^$k)))
         end
     end
     push!(code.args, quote
-        A.rawmoments[1] += iN * δBA
-        A.rawmoments[2] += iN * NA * δBA^2
+        A.rawmoments[1] -= BoN
+        A.rawmoments[2] += wa * BoN^2 + wb * AoN^2
     end)
     push!(code.args, :(return A))
     return code
