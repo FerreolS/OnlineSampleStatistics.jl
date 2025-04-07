@@ -1,4 +1,4 @@
-using Statistics, StatsBase
+using Statistics, StatsBase, OnlineStatsBase
 """
     UnivariateStatistic{T,K,I}
 
@@ -18,7 +18,7 @@ push!(A, 4.0)  # Add a new data point
 ```
 """
 
-mutable struct UnivariateStatistic{T,K,I}
+mutable struct UnivariateStatistic{T,K,I} <: OnlineStatsBase.OnlineStat{T}
     weights::I
     rawmoments::Vector{T}
     function UnivariateStatistic{T,K,I}(weights::I, rawmoments::Vector{T}) where {T,K,I}
@@ -86,7 +86,10 @@ end
 UnivariateStatistic{T,K,I}(weights::I, rawmoments...) where {T,K,I} = UnivariateStatistic{T,K,I}(weights, vcat(rawmoments...))
 
 UnivariateStatistic(x::T, K::Int) where {T<:Number} = UnivariateStatistic(x, 1, K)
-UnivariateStatistic(x::T, weight::Number, K::Int) where {T<:Number} = UnivariateStatistic(weight, vcat(x, zeros(T, K - 1)))
+function UnivariateStatistic(x::T, weight::Number, K::Int) where {T<:Number}
+    K > 0 || throw(ArgumentError("Moment of order $K <= 0 undefined"))
+    UnivariateStatistic(weight, vcat(x, zeros(T, K - 1)))
+end
 UnivariateStatistic(T::Type, K::Int) = UnivariateStatistic(T, Int, K)
 UnivariateStatistic(T::Type, TW::Type, K::Int) = UnivariateStatistic(zero(TW), zeros(T, K))
 UnivariateStatistic(K::Int) = UnivariateStatistic(Float64, K)
@@ -151,6 +154,7 @@ Compute the k-th moment of a UnivariateStatistic `A`.
 - The k-th moment of the statistic. If it is empty, the function returns `0`. 
 """
 get_moments(A::UnivariateStatistic{T,K,I}, k) where {T,K,I} = ifelse((N = weights(A)) == 0, 0, get_rawmoments(A, k) / ifelse(k == 1, 1, N))
+get_moments(A::UnivariateStatistic{T,K}) where {T,K} = [get_moments(A, k) for k in 1:K]
 
 """
     Statistics.mean(A::UnivariateStatistic{T,K,I}) where {T,K,I}
@@ -229,11 +233,13 @@ end
 
 
 function Base.push!(A::UnivariateStatistic{T,1}, b::T, w::Number) where {T<:Number}
+    w == 0 && return A
     A.rawmoments[1] += inv(increment_weights!(A, w)) * (b - A.rawmoments[1])
     return A
 end
 
 function Base.push!(A::UnivariateStatistic{T,2}, b::T, w::Number) where {T<:Number}
+    w == 0 && return A
     NA = weights(A)
     iN = inv(increment_weights!(A, w))
     μA, MA = A.rawmoments
@@ -248,6 +254,7 @@ end
 @generated function Base.push!(A::UnivariateStatistic{T,P}, b::T, w::Number) where {P,T<:Number}
     code = Expr(:block)
     push!(code.args, quote
+        w == 0 && return A
         NA = weights(A)
         iN = inv(increment_weights!(A, w))
         δBA = (b - A.rawmoments[1])
@@ -337,7 +344,7 @@ function Base.merge!(A::UnivariateStatistic{T1,2,I}, B::UnivariateStatistic{T2,2
 end
 
 
-@generated function Base.merge!(A::UnivariateStatistic{T,P,Int}, B::UnivariateStatistic{T,M,Int}) where {T,M,P}
+@generated function Base.merge!(A::UnivariateStatistic{T,P}, B::UnivariateStatistic{T,M}) where {T,M,P}
     P ≤ M || throw(ArgumentError("The number of moment $M of the second Arguments is less than the first $P."))
     code = Expr(:block)
     push!(code.args, quote
@@ -363,3 +370,28 @@ end
     push!(code.args, :(return A))
     return code
 end
+
+
+Base.merge!(A::UnivariateStatistic, x::Number) = push!(A, x)
+
+OnlineStatsBase._fit!(A::UnivariateStatistic, x::Number) = push!(A, x)
+OnlineStatsBase._fit!(A::UnivariateStatistic, x::AbstractArray) = push!(A, x)
+
+if false
+    OnlineStatsBase.value(A::UnivariateStatistic{T,1}) where {T} = mean(A)
+    OnlineStatsBase.value(A::UnivariateStatistic{T,2}) where {T} = [mean(A); var(A)]
+    OnlineStatsBase.value(A::UnivariateStatistic{T,3}) where {T} = [mean(A); var(A); skewness(A)]
+    OnlineStatsBase.value(A::UnivariateStatistic{T,4}) where {T} = [mean(A); var(A); skewness(A); kurtosis(A)]
+    OnlineStatsBase.value(A::UnivariateStatistic{T,K}) where {T,K} = vcat(mean(A), var(A), skewness(A), kurtosis(A), [get_moments(A, k) for k in 5:K])
+else
+    OnlineStatsBase.value(A::UnivariateStatistic{T,K}) where {T,K} = get_moments(A)
+end
+
+function Base.empty!(A::UnivariateStatistic)
+    A.weights = zero(A.weights)
+    A.rawmoments .= zero(eltype(A))
+    return A
+end
+
+
+OnlineStatsBase._merge!(A::UnivariateStatistic, B::UnivariateStatistic) = merge!(A, B)

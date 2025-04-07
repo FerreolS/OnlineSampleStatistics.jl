@@ -26,7 +26,7 @@ function IndependentStatistic(::Type{T}, K::Int, sz::NTuple{N,Int}, ::Type{TW}) 
     K > 0 || throw(ArgumentError("Moment of order $K <= 0 undefined"))
     rawmoments = (zeros(T, sz) for _ in 1:K)
     weights = zeros(TW, sz)
-    ZippedArray{UnivariateStatistic{T,K,Int}}(weights, rawmoments...)
+    ZippedArray{UnivariateStatistic{T,K,eltype(weights)}}(weights, rawmoments...)
 end
 
 function IndependentStatistic(K::Int, x::AbstractArray{T,N}, w::AbstractArray{TW,N}; dims=nothing) where {TW,T,N}
@@ -35,11 +35,14 @@ function IndependentStatistic(K::Int, x::AbstractArray{T,N}, w::AbstractArray{TW
         A = IndependentStatistic(T, K, size(x), TW)
         push!(A, x, w)
     else
-        length(dims) > N || throw(ArgumentError("IndependentStatistic : length(dims) > N"))
+        maximum(dims) ≥ N || throw(ArgumentError("IndependentStatistic : $(length(dims)) > $N"))
         sz = vcat(size(x)...)
         sz[vcat(dims...)] .= 1
         A = IndependentStatistic(T, K, NTuple{N,Int}(sz), TW)
-        foreach((y, z) -> push!(A, reshape(y, sz...), reshape(z, sz...)), eachslice(zip(x, w); dims=dims))
+        #foreach((y, z) -> push!(A, reshape(y, sz...), reshape(z, sz...)), zip(eachslice(x; dims=dims), eachslice(w; dims=dims)))
+        for (y, z) ∈ zip(eachslice(x; dims=dims), eachslice(w; dims=dims))
+            push!(A, y, z)
+        end
     end
     return A
 end
@@ -51,7 +54,7 @@ function IndependentStatistic(K::Int, x::AbstractArray{T,N}; dims=nothing) where
         A = IndependentStatistic(T, K, size(x))
         push!(A, x, 1)
     else
-        length(dims) > N || throw(ArgumentError("IndependentStatistic : length(dims) > N"))
+        maximum(dims) ≥ N || throw(ArgumentError("IndependentStatistic : $(maximum(dims)) > $N"))
         sz = vcat(size(x)...)
         sz[vcat(dims...)] .= 1
         A = IndependentStatistic(T, K, NTuple{N,Int}(sz))
@@ -103,7 +106,7 @@ end
 
 
 
-
+Base.push!(A::IndependentStatistic, x) = push!(A, x, 1)
 Base.push!(A::IndependentStatistic{T}, x::AbstractArray{T2}, w) where {T,T2} = push!(A, T.(x), w)
 
 function Base.push!(A::IndependentStatistic{T,N,K,W}, x::AbstractArray{T,N2}, w::AbstractArray{T,N2}) where {T,N,N2,K,W}
@@ -152,14 +155,14 @@ end
 increment!(A::AbstractArray, x) = A .+= x
 
 
-function _push!(A::IndependentStatistic{T,D,1}, b::AbstractArray{T,D}, w) where {T,D}
+function _push_!(A::IndependentStatistic{T,D,1}, b::AbstractArray{T,D}, w) where {T,D}
     N = get_weights(A)
     increment!(N, w)
     @. $get_rawmoments(A, 1) += inv(N) * (b - $get_rawmoments(A, 1))
     return A
 end
 
-function _push!(A::IndependentStatistic{T,D,2}, b::AbstractArray{T,D}, w) where {T,D}
+function _push_!(A::IndependentStatistic{T,D,2}, b::AbstractArray{T,D}, w) where {T,D}
     N = increment!(weights(A), w)
     NA = N .- 1
     δBA = (b .- get_rawmoments(A, 1))
@@ -168,11 +171,14 @@ function _push!(A::IndependentStatistic{T,D,2}, b::AbstractArray{T,D}, w) where 
     @. $get_rawmoments(A, 2) += iN * NA * δBA^2
     return A
 end
+Base.push!(A::IndependentStatistic{T,D}, b::AbstractArray{T,D}, w::Number) where {D,T<:Number} = _push!(A, b, w)
 
-@generated function Base.push!(A::IndependentStatistic{T,D,P}, b::AbstractArray{T,D}, w::W) where {P,D,T<:Number,T2<:Number,W<:Union{Number,AbstractArray{T2,D}}}
+Base.push!(A::IndependentStatistic{T,D}, b::AbstractArray{T,D}, w::AbstractArray{T2,D}) where {D,T<:Number,T2<:Number} = _push!(A, b, w)
+
+@generated function _push!(A::IndependentStatistic{T,D,P}, b::AbstractArray{T,D}, w::W) where {P,D,T<:Number,T2<:Number,W<:Union{Number,AbstractArray{T2,D}}}
     code = Expr(:block)
     if P < 3
-        push!(code.args, :(_push!(A, b)))
+        push!(code.args, :(_push_!(A, b, w)))
         return code
     end
     push!(code.args, quote
