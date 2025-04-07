@@ -384,7 +384,7 @@ if false
     OnlineStatsBase.value(A::UnivariateStatistic{T,4}) where {T} = [mean(A); var(A); skewness(A); kurtosis(A)]
     OnlineStatsBase.value(A::UnivariateStatistic{T,K}) where {T,K} = vcat(mean(A), var(A), skewness(A), kurtosis(A), [get_moments(A, k) for k in 5:K])
 else
-    OnlineStatsBase.value(A::UnivariateStatistic{T,K}) where {T,K} = get_moments(A)
+    OnlineStatsBase.value(A::UnivariateStatistic) = get_moments(A)
 end
 
 function Base.empty!(A::UnivariateStatistic)

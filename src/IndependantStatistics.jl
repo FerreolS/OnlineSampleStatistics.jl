@@ -171,11 +171,12 @@ function _push_!(A::IndependentStatistic{T,D,2}, b::AbstractArray{T,D}, w) where
     @. $get_rawmoments(A, 2) += iN * NA * δBA^2
     return A
 end
+
 Base.push!(A::IndependentStatistic{T,D}, b::AbstractArray{T,D}, w::Number) where {D,T<:Number} = _push!(A, b, w)
 
 Base.push!(A::IndependentStatistic{T,D}, b::AbstractArray{T,D}, w::AbstractArray{T2,D}) where {D,T<:Number,T2<:Number} = _push!(A, b, w)
 
-@generated function _push!(A::IndependentStatistic{T,D,P}, b::AbstractArray{T,D}, w::W) where {P,D,T<:Number,T2<:Number,W<:Union{Number,AbstractArray{T2,D}}}
+@generated function _push!(A::IndependentStatistic{T,D,P}, b::AbstractArray{T,D}, w::W) where {P,D,T<:Number,W<:Union{Number,AbstractArray{<:Number,D}}}
     code = Expr(:block)
     if P < 3
         push!(code.args, :(_push_!(A, b, w)))
