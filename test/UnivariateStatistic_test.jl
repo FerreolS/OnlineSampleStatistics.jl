@@ -8,7 +8,7 @@
     @test A.weights == 1
     @test B.rawmoments == [0.0f0]
     @test B.weights == 0
-    @test values(A) == [0.5, 0.0]
+    @test value(A) == [0.5, 0.0]
 
     @test @inferred mean(A) == 0.5
     @test @inferred isnan(var(A))
@@ -80,6 +80,7 @@
         @test_throws ArgumentError UnivariateStatistic(2, 1, 0)
     end
     @testset " Transducers Tests" begin
+        using Transducers
         x = 1e9 .+ (randn(10^6)) .^ 2
         A = UnivariateStatistic(4)
         push!(A, x)
