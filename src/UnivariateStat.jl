@@ -85,7 +85,8 @@ end
 
 UnivariateStatistic{T,K,I}(weights::I, rawmoments...) where {T,K,I} = UnivariateStatistic{T,K,I}(weights, vcat(rawmoments...))
 
-UnivariateStatistic(x::T, K::Int) where {T<:Number} = UnivariateStatistic(x, 1, K)
+UnivariateStatistic(x::T, K::Int) where {T<:AbstractFloat} = UnivariateStatistic(x, 1, K)
+UnivariateStatistic(x::T, K::Int) where {T<:Number} = UnivariateStatistic(Float64(x), 1, K)
 function UnivariateStatistic(x::T, weight::Number, K::Int) where {T<:Number}
     K > 0 || throw(ArgumentError("Moment of order $K <= 0 undefined"))
     UnivariateStatistic(weight, vcat(x, zeros(T, K - 1)))
@@ -93,7 +94,7 @@ end
 UnivariateStatistic(T::Type, K::Int) = UnivariateStatistic(T, Int, K)
 UnivariateStatistic(T::Type, TW::Type, K::Int) = UnivariateStatistic(zero(TW), zeros(T, K))
 UnivariateStatistic(K::Int) = UnivariateStatistic(Float64, K)
-UnivariateStatistic(::Type{T}, x, K::Int,) where {T} = UnivariateStatistic(T.(x), K)
+UnivariateStatistic(::Type{T}, x, K::Int) where {T} = UnivariateStatistic(T.(x), K)
 """
     UnivariateStatistic(K::Int, x::AbstractArray{T}) where {T<:Number}
 
@@ -377,15 +378,7 @@ Base.merge!(A::UnivariateStatistic, x::Number) = push!(A, x)
 OnlineStatsBase._fit!(A::UnivariateStatistic, x::Number) = push!(A, x)
 OnlineStatsBase._fit!(A::UnivariateStatistic, x::AbstractArray) = push!(A, x)
 
-if false
-    OnlineStatsBase.value(A::UnivariateStatistic{T,1}) where {T} = mean(A)
-    OnlineStatsBase.value(A::UnivariateStatistic{T,2}) where {T} = [mean(A); var(A)]
-    OnlineStatsBase.value(A::UnivariateStatistic{T,3}) where {T} = [mean(A); var(A); skewness(A)]
-    OnlineStatsBase.value(A::UnivariateStatistic{T,4}) where {T} = [mean(A); var(A); skewness(A); kurtosis(A)]
-    OnlineStatsBase.value(A::UnivariateStatistic{T,K}) where {T,K} = vcat(mean(A), var(A), skewness(A), kurtosis(A), [get_moments(A, k) for k in 5:K])
-else
-    OnlineStatsBase.value(A::UnivariateStatistic) = get_moments(A)
-end
+OnlineStatsBase.value(A::UnivariateStatistic) = get_moments(A)
 
 function Base.empty!(A::UnivariateStatistic)
     A.weights = zero(A.weights)
