@@ -98,4 +98,13 @@
         B = foldxd(UnivariateStatistic(4), x)
         @test A ≈ B
     end
+
+    @testset "Weighted Tests" begin
+        x = randn(2, 3, 4)
+        w = rand(size(x)...)
+        A = UnivariateStatistic(x, w, 1)
+        @test nobs(A) == sum(w)
+        @test mean(A) ≈ sum(w .* x) ./ sum(w)
+    end
+
 end

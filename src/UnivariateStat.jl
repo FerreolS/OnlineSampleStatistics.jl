@@ -104,15 +104,23 @@ Constructs a UnivariateStatistic object storing the first `K` moments  from the 
 - `K::Int`: The number of moments 
 - `x::AbstractArray{T}`: array of samples where `T` is a subtype of `Number`.
 """
-
-function UnivariateStatistic(x::AbstractArray{T}, K::Int) where {T<:Number}
+UnivariateStatistic(x::AbstractArray{T}, K::Int) where {T<:Number} = UnivariateStatistic(Float64.(x), 1, K)
+function UnivariateStatistic(x::AbstractArray{T}, K::Int) where {T<:AbstractFloat}
     A = UnivariateStatistic(T, K)
     push!(A, x)
     return A
 end
 
-function UnivariateStatistic(x::AbstractArray{T}, w::AbstractArray{TW}, K::Int) where {T<:Number,TW<:Number}
-    A = UnivariateStatistic(T, TW, K)
+UnivariateStatistic(x::AbstractArray{T}, w::AbstractArray, K::Int) where {T<:Number} = UnivariateStatistic(T.(x), w, K)
+function UnivariateStatistic(x::AbstractArray{T}, w::AbstractArray{TW}, K::Int) where {T<:AbstractFloat,TW<:Number}
+    if eltype(w) == Bool
+        w = Int.(w)
+        A = UnivariateStatistic(T, Int, K)
+    else
+        A = UnivariateStatistic(T, TW, K)
+    end
+    size(x) == size(w) || throw(ArgumentError("UnivariateStatistic : size(x) != size(w)"))
+    K > 0 || throw(ArgumentError("Moment of order $K <= 0 undefined"))
     nonnegative(w) || throw(ArgumentError("weights can't be negative"))
     push!(A, x, w)
     return A
@@ -136,7 +144,7 @@ Base.copy(A::UnivariateStatistic) = deepcopy(A)
 
 
 
-StatsBase.nobs(A::UnivariateStatistic{T,K,Int}) where {T,K} = A.weights
+StatsBase.nobs(A::UnivariateStatistic) = A.weights
 weights(A::UnivariateStatistic{T,K,W}) where {T,K,W<:Number} = A.weights
 
 
@@ -218,7 +226,7 @@ Pushes a new samples `y` into the UnivariateStatistic `A`.
 - `ArgumentError`: If the type of elements in `y` is not compatible with the type `T` of `A`.
 
 """
-function Base.push!(A::UnivariateStatistic{T}, y::T2) where {T,T2}
+function Base.push!(A::UnivariateStatistic{T}, y::AbstractArray{T2}) where {T,T2}
     T == eltype(y) || promote_type(T, eltype(y)) == T || throw(ArgumentError("The input for $(typeof(A)) is $T. Found $T2."))
     for x ∈ y
         A = push!(A, x)
@@ -226,9 +234,15 @@ function Base.push!(A::UnivariateStatistic{T}, y::T2) where {T,T2}
     return A
 end
 
-@inline increment_weights!(A::UnivariateStatistic, x) = A.weights += x
-
 Base.push!(A::UnivariateStatistic, b::Number) = push!(A, b, 1)
+
+function Base.push!(A::UnivariateStatistic{T}, y::AbstractArray{T2}, w::AbstractArray) where {T,T2}
+    T == eltype(y) || promote_type(T, eltype(y)) == T || throw(ArgumentError("The input for $(typeof(A)) is $T. Found $T2."))
+    for (x, v) ∈ zip(y, w)
+        A = push!(A, x, v)
+    end
+    return A
+end
 
 function Base.push!(A::UnivariateStatistic{T}, b::T2, w) where {T,T2<:Number}
     promote_type(T, T2) == T || throw(ArgumentError("The input type $T2 is not promotable to $T"))
@@ -236,17 +250,20 @@ function Base.push!(A::UnivariateStatistic{T}, b::T2, w) where {T,T2<:Number}
 end
 
 
+
+@inline increment_weights!(A::UnivariateStatistic, x) = A.weights += x
+
 function Base.push!(A::UnivariateStatistic{T,1}, b::T, w::Number) where {T<:Number}
     w == 0 && return A
-    A.rawmoments[1] += inv(increment_weights!(A, w)) * (b - A.rawmoments[1])
+    A.rawmoments[1] += w * inv(increment_weights!(A, w)) * (b - A.rawmoments[1])
     return A
 end
 
 function Base.push!(A::UnivariateStatistic{T,2}, b::T, w::Number) where {T<:Number}
     w == 0 && return A
     NA = weights(A)
-    iN = inv(increment_weights!(A, w))
-    μA, MA = A.rawmoments
+    iN = w * inv(increment_weights!(A, w))
+    μA = A.rawmoments[1]
 
     δBA = (b - μA)
     A.rawmoments[1] += iN * δBA
