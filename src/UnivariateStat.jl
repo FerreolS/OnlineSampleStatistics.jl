@@ -376,7 +376,7 @@ end
 end
 
 
-Base.merge!(A::UnivariateStatistic, x::Number) = push!(A, x)
+#Base.merge!(A::UnivariateStatistic, x::Number) = push!(A, x)
 
 OnlineStatsBase._fit!(A::UnivariateStatistic, x::Number) = push!(A, x)
 OnlineStatsBase._fit!(A::UnivariateStatistic, x::AbstractArray) = push!(A, x)
@@ -390,4 +390,4 @@ function Base.empty!(A::UnivariateStatistic)
 end
 
 
-OnlineStatsBase._merge!(A::UnivariateStatistic, B::UnivariateStatistic) = merge!(A, B)
+#OnlineStatsBase._merge!(A::UnivariateStatistic, B::UnivariateStatistic) = merge!(A, B)

@@ -8,11 +8,20 @@
     @test A.weights == 1
     @test B.rawmoments == [0.0f0]
     @test B.weights == 0
-    @test value(A) == [0.5, 0.0]
 
     @test @inferred mean(A) == 0.5
     @test @inferred isnan(var(A))
     @test @inferred nobs(A) == 1
+    @testset "OnlineStatsBase API" begin
+        using OnlineStatsBase
+
+        A = UnivariateStatistic(1, 2,)
+        @test value(A) == [1, 0.0]
+        @test empty!(A) == zero(A)
+        @test @inferred(fit!(A, ones(10))) == UnivariateStatistic(10, [1.0, 0.0])
+    end
+
+    @test empty!(A) == zero(A)
 
     @testset "push! merge! tests for first two moments" begin
         C = zero(A)
