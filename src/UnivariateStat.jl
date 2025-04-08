@@ -105,22 +105,27 @@ Constructs a UnivariateStatistic object storing the first `K` moments  from the 
 - `x::AbstractArray{T}`: array of samples where `T` is a subtype of `Number`.
 """
 UnivariateStatistic(x::AbstractArray{T}, K::Int) where {T<:Number} = UnivariateStatistic(Float64.(x), 1, K)
-function UnivariateStatistic(x::AbstractArray{T}, K::Int) where {T<:AbstractFloat}
+function UnivariateStatistic(x::AbstractArray{T}, K::Int) where {T<:Union{AbstractFloat,Complex}}
+    K > 0 || throw(ArgumentError("Moment of order $K <= 0 undefined"))
+    !(T <: Complex) || K < 3 || throw(ArgumentError("UnivariateStatistic : $K > 2 not implemented for complex numbers"))
     A = UnivariateStatistic(T, K)
     push!(A, x)
     return A
 end
 
 UnivariateStatistic(x::AbstractArray{T}, w::AbstractArray, K::Int) where {T<:Number} = UnivariateStatistic(T.(x), w, K)
-function UnivariateStatistic(x::AbstractArray{T}, w::AbstractArray{TW}, K::Int) where {T<:AbstractFloat,TW<:Number}
+
+function UnivariateStatistic(x::AbstractArray{T}, w::AbstractArray{TW}, K::Int) where {T<:Union{AbstractFloat,Complex},TW<:Number}
+
+    size(x) == size(w) || throw(ArgumentError("UnivariateStatistic : size(x) != size(w)"))
+    K > 0 || throw(ArgumentError("Moment of order $K <= 0 undefined"))
+    !(T <: Complex) || K < 3 || throw(ArgumentError("UnivariateStatistic : $K > 2 not implemented for complex numbers"))
     if eltype(w) == Bool
         w = Int.(w)
         A = UnivariateStatistic(T, Int, K)
     else
         A = UnivariateStatistic(T, TW, K)
     end
-    size(x) == size(w) || throw(ArgumentError("UnivariateStatistic : size(x) != size(w)"))
-    K > 0 || throw(ArgumentError("Moment of order $K <= 0 undefined"))
     nonnegative(w) || throw(ArgumentError("weights can't be negative"))
     push!(A, x, w)
     return A
@@ -266,23 +271,23 @@ function Base.push!(A::UnivariateStatistic{T,2}, b::T) where {T<:Number}
 
     δBA = (b - μA)
     A.rawmoments[1] += iN * δBA
-    A.rawmoments[2] += iN * NA * δBA^2
+    A.rawmoments[2] += iN * NA * abs2(δBA)
     return A
 end
 
-function Base.push!(A::UnivariateStatistic{T,2}, b::T, wb) where {T<:Number}
+#= function Base.push!(A::UnivariateStatistic{T,2}, b::T, wb) where {T<:Number}
     wb == 0 && return A
     wa = weights(A)
+    μA = A.rawmoments[1]
     iN = inv(increment_weights!(A, wb))
     δBA = (b - μA)
     BoN = -wb * iN * δBA
     AoN = wa * iN * δBA
-    μA = A.rawmoments[1]
 
     A.rawmoments[1] -= BoN
     A.rawmoments[2] += wa * BoN^2 + wb * AoN^2
     return A
-end
+end =#
 
 
 @generated function Base.push!(A::UnivariateStatistic{T,P}, b::T, wb::Number) where {P,T<:Number}
@@ -303,7 +308,7 @@ end
     end
     push!(code.args, quote
         A.rawmoments[1] -= BoN
-        A.rawmoments[2] += wa * BoN^2 + wb * AoN^2
+        A.rawmoments[2] += wa * abs2(BoN) + wb * abs2(AoN)
     end)
     push!(code.args, :(return A))
     return code
@@ -367,15 +372,18 @@ end
 
 function Base.merge!(A::UnivariateStatistic{T1,2,I}, B::UnivariateStatistic{T2,2,I}) where {T1,T2,I}
     promote_type(T1, T2) == T1 || throw(ArgumentError("The input for $(typeof(A)) is $T. Found $(eltype(B))."))
-    NA = weights(A)
-    (NB = weights(B)) == 0 && return A
-    N = NA + NB
-    A.weights = N
-    μA, MA = A.rawmoments
-    μB, MB = B.rawmoments
+    (wb = weights(B)) == 0 && return A
+    wa = weights(A)
+    iN = inv(increment_weights!(A, wb))
+    μA = A.rawmoments[1]
+    μB, MB = B.rawmoments[1:2]
     δBA = (μB - μA)
-    A.rawmoments[1] += inv(N) * NB * δBA
-    A.rawmoments[2] += MB + inv(N) * NA * NB * δBA^2
+    BoN = -wb * iN * δBA
+    AoN = wa * iN * δBA
+
+    # A.rawmoments[2] += MB + inv(N) * wa * wb * δBA^2
+    A.rawmoments[1] -= BoN
+    A.rawmoments[2] += MB + wa * abs2(BoN) + wb * abs2(AoN)
     return A
 end
 
@@ -384,24 +392,27 @@ end
     P ≤ M || throw(ArgumentError("The number of moment $M of the second Arguments is less than the first $P."))
     code = Expr(:block)
     push!(code.args, quote
-        NA = weights(A)
-        (NB = weights(B)) == 0 && return A
-        N = NA + NB
-        A.weights = N
-        iN = inv(N)
-        δBA = (B.rawmoments[1] - A.rawmoments[1])
-        PB = -iN * NB * δBA
-        PA = iN * NA * δBA
+        (wb = weights(B)) == 0 && return A
+        wa = weights(A)
+        iN = inv(increment_weights!(A, wb))
+        μA = A.rawmoments[1]
+        μB, MB = B.rawmoments[1:2]
+        δBA = (μB - μA)
+        BoN = -wb * iN * δBA
+        AoN = wa * iN * δBA
+
+        BoN = -iN * wb * δBA
+        AoN = iN * wa * δBA
     end)
     for p in P:-1:3
         for k in 1:(p-2)
-            push!(code.args, :(A.rawmoments[$p] += binomial($p, $k) * (PB^$k * A.rawmoments[$p-$k] + PA^$k * B.rawmoments[$p-$k])))
+            push!(code.args, :(A.rawmoments[$p] += binomial($p, $k) * (BoN^$k * A.rawmoments[$p-$k] + AoN^$k * B.rawmoments[$p-$k])))
         end
-        push!(code.args, :(A.rawmoments[$p] += B.rawmoments[$p] + NA * PB^$p + NB * PA^$p))
+        push!(code.args, :(A.rawmoments[$p] += B.rawmoments[$p] + wa * BoN^$p + wb * AoN^$p))
     end
     push!(code.args, quote
-        A.rawmoments[1] -= PB
-        A.rawmoments[2] += B.rawmoments[2] + PA * NB * δBA
+        A.rawmoments[1] -= BoN
+        A.rawmoments[2] += MB + wa * abs2(BoN) + wb * abs2(AoN)
     end)
     push!(code.args, :(return A))
     return code
@@ -409,9 +420,8 @@ end
 
 
 #Base.merge!(A::UnivariateStatistic, x::Number) = push!(A, x)
-
 OnlineStatsBase._fit!(A::UnivariateStatistic, x::Number) = push!(A, x)
-OnlineStatsBase._fit!(A::UnivariateStatistic, x::AbstractArray) = push!(A, x)
+#OnlineStatsBase._fit!(A::UnivariateStatistic, x::AbstractArray) = push!(A, x)
 
 OnlineStatsBase.value(A::UnivariateStatistic) = get_moments(A)
 
@@ -422,4 +432,4 @@ function Base.empty!(A::UnivariateStatistic)
 end
 
 
-#OnlineStatsBase._merge!(A::UnivariateStatistic, B::UnivariateStatistic) = merge!(A, B)
+OnlineStatsBase._merge!(A::UnivariateStatistic, B::UnivariateStatistic) = merge!(A, B)

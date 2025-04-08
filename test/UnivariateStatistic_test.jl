@@ -82,12 +82,26 @@
         @test isapprox(A.rawmoments, B.rawmoments; rtol=1e-6)
     end
 
+    @testset "Complex numbers" begin
+        x = Complex.(1e9 .+ (randn(10^6)) .^ 2, randn(10^6))
+        @test_throws ArgumentError UnivariateStatistic(x, 4)
+
+        A = UnivariateStatistic(x, 2)
+        x1 = x[1:10^5]
+        x2 = x[(10^5+1):end]
+        B = UnivariateStatistic(x1, 2)
+        C = UnivariateStatistic(x2, 2)
+        merge!(B, C)
+        @test isapprox(A.rawmoments, B.rawmoments; rtol=1e-6)
+    end
+
     @testset "error handling" begin
         @test_throws ArgumentError UnivariateStatistic(2, -1)
         @test_throws ArgumentError UnivariateStatistic(2, 0)
         @test_throws ArgumentError UnivariateStatistic(2, 1, -1)
         @test_throws ArgumentError UnivariateStatistic(2, 1, 0)
     end
+
     @testset " Transducers Tests" begin
         using Transducers
         x = 1e9 .+ (randn(10^6)) .^ 2
@@ -100,11 +114,12 @@
     end
 
     @testset "Weighted Tests" begin
-        x = randn(2, 3, 4)
+        x = randn(1_000)
         w = rand(size(x)...)
-        A = UnivariateStatistic(x, w, 1)
+        A = UnivariateStatistic(x, w, 4)
         @test nobs(A) == sum(w)
         @test mean(A) ≈ sum(w .* x) ./ sum(w)
+        @test var(A) ≈ sum(w .* abs2.(x)) ./ sum(w)
     end
 
 end
