@@ -1,11 +1,93 @@
 using ZippedArrays, StructuredArrays
-
 #= getters on AbstractArrays that are not  IndependentStatistic =#
+"""
+    get_rawmoments(x::AbstractArray{UnivariateStatistic})
+
+Retrieve the raw moments from an array of `UnivariateStatistic` objects. 
+Returns an array where each element corresponds to the raw moments of the respective `UnivariateStatistic` in `x`.
+
+# Arguments
+- `x::AbstractArray{UnivariateStatistic}`: An array of `UnivariateStatistic` objects.
+
+# Returns
+- An array of raw moments.
+
+"""
 get_rawmoments(x::AbstractArray{UnivariateStatistic}) = map(x -> x.rawmoments, x)
+
+"""
+    get_weights(x::AbstractArray{UnivariateStatistic})
+
+Retrieve the weights from an array of `UnivariateStatistic` objects. 
+Returns an array where each element corresponds to the weights of the respective `UnivariateStatistic` in `x`.
+
+# Arguments
+- `x::AbstractArray{UnivariateStatistic}`: An array of `UnivariateStatistic` objects.
+
+# Returns
+- An array of weights.
+
+"""
 get_weights(x::AbstractArray{UnivariateStatistic}) = map(x -> x.weights, x)
+
+"""
+
+    weights(x::AbstractArray{UnivariateStatistic})
+
+Alias for `get_weights`. Retrieves the weights from an array of `UnivariateStatistic` objects.
+
+# Arguments
+- `x::AbstractArray{UnivariateStatistic}`: An array of `UnivariateStatistic` objects.
+
+# Returns
+- An array of weights.
+"""
 weights(x::AbstractArray{UnivariateStatistic}) = map(x -> x.weights, x)
+
+"""
+    get_rawmoments(x::AbstractArray{UnivariateStatistic}, k::Int)
+
+Retrieve the `k`-th raw moments from an array of `UnivariateStatistic` objects. 
+Returns an array where each element corresponds to the `k`-th raw moment of the respective `UnivariateStatistic` in `x`.
+
+# Arguments
+- `x::AbstractArray{UnivariateStatistic}`: An array of `UnivariateStatistic` objects.
+- `k::Int`: The order of the raw moment to retrieve.
+
+# Returns
+- An array of `k`-th raw moments.
+
+"""
 get_rawmoments(x::AbstractArray{UnivariateStatistic}, k::Int) = map(y -> get_rawmoments(y, k), x)
+"""
+
+    StatsBase.nobs(x::AbstractArray{UnivariateStatistic{T,K,Int}}) where {T,K}
+
+Retrieve the number of observations (`nobs`) from an array of `UnivariateStatistic` objects. 
+Returns an array where each element corresponds to the number of observations of the respective `UnivariateStatistic` in `x`.
+
+# Arguments
+- `x::AbstractArray{UnivariateStatistic{T,K,Int}}`: An array of `UnivariateStatistic` objects.
+
+# Returns
+- An array of the number of observations.
+"""
+
 StatsBase.nobs(x::AbstractArray{UnivariateStatistic{T,K,Int}}) where {T,K} = map(x -> nobs(x), x)
+
+"""
+    get_moments(x::AbstractArray{UnivariateStatistic}, k::Int)
+
+Retrieve the `k`-th moments from an array of `UnivariateStatistic` objects. 
+Returns an array where each element corresponds to the `k`-th moment of the respective `UnivariateStatistic` in `x`.
+
+# Arguments
+- `x::AbstractArray{UnivariateStatistic}`: An array of `UnivariateStatistic` objects.
+- `k::Int`: The order of the moment to retrieve.
+
+# Returns
+- An array of `k`-th moments.
+"""
 get_moments(x::AbstractArray{UnivariateStatistic}, k::Int) = map(y -> get_moments(y, k), x)
 
 #===  IndependentStatistic ===#
@@ -124,7 +206,7 @@ function Base.push!(A::IndependentStatistic{T,N,K,W}, x::AbstractArray{T,N2}, w:
     singleton = trues(N2)
     singleton[sgltidx] .= false
 
-    szA[sgltidx] == szx[sgltidx] || throw(ArgumentError("push! : size(A)=$(size(A)) != $(size(x))"))
+    szA[sgltidx] == szx[sgltidx] || throw(DimensionMismatch("push! : size(A) incompatible with size(x)"))
     slc = NTuple{sum(singleton),Int}((1:N2)[singleton])
 
     for (y, z) ∈ zip(eachslice(x; dims=slc, drop=(length(sgltidx) == length(szA))), eachslice(w; dims=slc, drop=(length(sgltidx) == length(szA))))
@@ -143,7 +225,7 @@ function Base.push!(A::IndependentStatistic{T,N}, x::AbstractArray{T,N2}, w::Rea
     singleton = trues(N2)
     singleton[sgltidx] .= false
 
-    szA[sgltidx] == szx[sgltidx] || throw(ArgumentError("push! : size(A)=$(size(A)) != $(size(x))"))
+    szA[sgltidx] == szx[sgltidx] || throw(DimensionMismatch("push! : size(A) incompatible with size(x)"))
     slc = NTuple{sum(singleton),Int}((1:N2)[singleton])
     for y ∈ eachslice(x; dims=slc, drop=(length(sgltidx) == length(szA)))
         _push!(A, reshape(y, szA...), w)

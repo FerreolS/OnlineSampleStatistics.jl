@@ -33,14 +33,7 @@ mutable struct UnivariateStatistic{T,K,I} <: OnlineStatsBase.OnlineStat{T}
 
 end
 
-#= Future traits system 
-abstract type WeightTraits end
-struct FrequencyWeights <: WeightTraits end
-struct AnalyticWeights <: WeightTraits end
-struct ProbabilityWeights <: WeightTraits end
-WeightTraits(A::UnivariateStatistic) = ProbabilityWeights()
-WeightTraits(A::UnivariateStatistic{T,K,Int}) where {T,K} = FrequencyWeights()
- =#
+
 """
     UnivariateStatistic(x::T,K::Int) where {T<:Number}
 
