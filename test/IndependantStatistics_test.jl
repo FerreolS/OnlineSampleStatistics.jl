@@ -9,7 +9,7 @@ using ZippedArrays, StructuredArrays
     end
 
     # Test constructor with custom type
-    @testset "Custom Type Constructor" begin
+    @testset "other Type Constructor" begin
         A = IndependentStatistic(Float32, 2, (4, 4))
         @test size(A) == (4, 4)
         @test typeof(A) <: ZippedArray
@@ -37,11 +37,15 @@ using ZippedArrays, StructuredArrays
 
     @testset "Weighted Data" begin
         dims = 3
-        x = randn(2, 3, 4)
-        w = (rand(size(x)...) .> 0.5)
+        x = randn(2, 3, 10)
+        w = (rand(size(x)...) .> 0.1)
         A = IndependentStatistic(2, x, w, dims=dims)
 
         @test mean(A) ≈ sum(w .* x; dims=dims) ./ sum(w; dims=dims)
         @test var(A; corrected=false) ≈ sum(w .* (x .- mean(A)) .^ 2; dims=dims) ./ sum(w; dims=dims)
+
+        A = IndependentStatistic(Float64, 1, size(A), Float64)
+        @inferred push!(A, x, w)
+        @test nobs(A) ≈ sum(w, dims=dims)
     end
 end
