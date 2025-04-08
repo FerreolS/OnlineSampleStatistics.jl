@@ -109,7 +109,7 @@ end
 Base.push!(A::IndependentStatistic, x) = push!(A, x, 1)
 Base.push!(A::IndependentStatistic{T}, x::AbstractArray{T2}, w) where {T,T2} = push!(A, T.(x), w)
 
-function Base.push!(A::IndependentStatistic{T,N,K,W}, x::AbstractArray{T,N2}, w::AbstractArray{T,N2}) where {T,N,N2,K,W}
+function Base.push!(A::IndependentStatistic{T,N,K,W}, x::AbstractArray{T,N2}, w::AbstractArray{<:Real,N2}) where {T,N,N2,K,W}
     N2 ≥ N || throw(ArgumentError("push! : N2 < N"))
     size(x) == size(w) || throw(ArgumentError("IndependentStatistic : size(x) != size(w)"))
 
@@ -128,7 +128,7 @@ function Base.push!(A::IndependentStatistic{T,N,K,W}, x::AbstractArray{T,N2}, w:
     return A
 end
 
-function Base.push!(A::IndependentStatistic{T,N}, x::AbstractArray{T,N2}, w::Number) where {T,N,N2}
+function Base.push!(A::IndependentStatistic{T,N}, x::AbstractArray{T,N2}, w::Real) where {T,N,N2}
     N2 ≥ N || throw(ArgumentError("push! : N2 < N"))
 
     szx = vcat(size(x)...)
@@ -148,17 +148,17 @@ end
 
 
 
-function increment!(A::MutableUniformArray, x::Number)
+@inline function increment!(A::MutableUniformArray, x::Real)
     StructuredArrays.setvalue!(A, StructuredArrays.value(A) + x)
     return A
 end
-increment!(A::AbstractArray, x) = A .+= x
+@inline increment!(A::AbstractArray, x) = A .+= x
+@inline increment_weights!(A::IndependentStatistic, x) = increment!(weights(A), x)
 
-
+#= 
 function _push_!(A::IndependentStatistic{T,D,1}, b::AbstractArray{T,D}, w) where {T,D}
     N = get_weights(A)
-    increment!(N, w)
-    @. $get_rawmoments(A, 1) += inv(N) * (b - $get_rawmoments(A, 1))
+    @. $get_rawmoments(A, 1) += w * inv($increment_weights!(A, w)) * (b - $get_rawmoments(A, 1))
     return A
 end
 
@@ -171,32 +171,32 @@ function _push_!(A::IndependentStatistic{T,D,2}, b::AbstractArray{T,D}, w) where
     @. $get_rawmoments(A, 2) += iN * NA * δBA^2
     return A
 end
+ =#
+Base.push!(A::IndependentStatistic{T,D}, b::AbstractArray{T,D}, w::Real) where {D,T<:Number} = _push!(A, b, w)
 
-Base.push!(A::IndependentStatistic{T,D}, b::AbstractArray{T,D}, w::Number) where {D,T<:Number} = _push!(A, b, w)
+Base.push!(A::IndependentStatistic{T,D}, b::AbstractArray{T,D}, w::AbstractArray{<:Real,D}) where {D,T<:Number} = _push!(A, b, w)
 
-Base.push!(A::IndependentStatistic{T,D}, b::AbstractArray{T,D}, w::AbstractArray{T2,D}) where {D,T<:Number,T2<:Number} = _push!(A, b, w)
-
-@generated function _push!(A::IndependentStatistic{T,D,P}, b::AbstractArray{T,D}, w::W) where {P,D,T<:Number,W<:Union{Number,AbstractArray{<:Number,D}}}
+@generated function _push!(A::IndependentStatistic{T,D,P}, b::AbstractArray{T,D}, wb::W) where {P,D,T<:Number,W<:Union{Number,AbstractArray{<:Number,D}}}
     code = Expr(:block)
-    if P < 3
-        push!(code.args, :(_push_!(A, b, w)))
-        return code
-    end
     push!(code.args, quote
-        N = increment!(weights(A), w)
-        NA = N .- 1
-        δBA = (b .- get_rawmoments(A, 1))
-        iN = inv.(N)
+        wa = copy(weights(A))
+        iN = inv.(increment_weights!(A, wb))
+        δBA = @. (b - $get_rawmoments(A, 1))
+        BoN = @. -wb * iN * δBA
+        @. $get_rawmoments(A, 1) -= BoN
+        if P == 1
+            return A
+        end
+        AoN = @. wa * iN * δBA
     end)
     for p in P:-1:3
-        push!(code.args, :(@. $get_rawmoments(A, $p) += (NA * (-iN)^$p + (NA * iN)^$p) * δBA^$p))
+        push!(code.args, :(@. $get_rawmoments(A, $p) += wa * BoN^$p + wb * AoN^$p))
         for k in 1:(p-2)
-            push!(code.args, :(@. $get_rawmoments(A, $p) += binomial($p, $k) * (@. $get_rawmoments(A, $p - $k) * (-δBA * iN)^$k)))
+            push!(code.args, :(@. $get_rawmoments(A, $p) += binomial($p, $k) * (@. $get_rawmoments(A, $p - $k) * BoN^$k)))
         end
     end
     push!(code.args, quote
-        @. $get_rawmoments(A, 1) += iN * δBA
-        @. $get_rawmoments(A, 2) += iN * NA * δBA^2
+        @. $get_rawmoments(A, 2) += wa * abs2(BoN) + wb * abs2(AoN)
     end)
     push!(code.args, :(return A))
     return code

@@ -130,7 +130,7 @@
 
         using Transducers
         A = fit!(UnivariateStatistic(Float64, Float64, 4), zip(x, w))
-        B = foldxd(UnivariateStatistic(Float64, Float64, 4), zip(x, w))
+        B = foldxt(UnivariateStatistic(Float64, Float64, 4), zip(x, w))
         @test A ≈ B
     end
 
