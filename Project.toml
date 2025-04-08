@@ -18,7 +18,7 @@ StructuredArrays = "0.2"
 Test = "1"
 Transducers = "0.4"
 ZippedArrays = "0.2"
-julia = "1.6"
+julia = "1.9"
 
 [extras]
 StructuredArrays = "2e8cd123-6858-488d-b42d-068777248635"
