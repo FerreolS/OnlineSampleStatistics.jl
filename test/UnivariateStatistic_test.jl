@@ -114,12 +114,14 @@
     end
 
     @testset "Weighted Data" begin
+        UnivariateStatistic(ones(Int, 10), (randn(10) .> 0), 4)
         x = randn(1_000)
         w = rand(size(x)...)
         A = UnivariateStatistic(x, w, 4)
         @test nobs(A) ≈ sum(w)
         @test mean(A) ≈ sum(w .* x) ./ sum(w)
-        @test isapprox(var(A; corrected=false), sum(w .* (x .- mean(A)) .^ 2) ./ sum(w); rtol=1e-6)
+        @test isapprox(var(A, corrected=false), sum(w .* (x .- mean(A)) .^ 2) ./ sum(w); rtol=1e-6)
+        @test_logs (:warn, "The number of samples is not an integer. The variance is not corrected.") var(A)
     end
 
 end

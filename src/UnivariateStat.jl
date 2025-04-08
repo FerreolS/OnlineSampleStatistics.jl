@@ -113,7 +113,7 @@ function UnivariateStatistic(x::AbstractArray{T}, K::Int) where {T<:Union{Abstra
     return A
 end
 
-UnivariateStatistic(x::AbstractArray{T}, w::AbstractArray, K::Int) where {T<:Number} = UnivariateStatistic(T.(x), w, K)
+UnivariateStatistic(x::AbstractArray{T}, w::AbstractArray, K::Int) where {T<:Number} = UnivariateStatistic(Float64.(x), w, K)
 
 function UnivariateStatistic(x::AbstractArray{T}, w::AbstractArray{TW}, K::Int) where {T<:Union{AbstractFloat,Complex},TW<:Number}
 
