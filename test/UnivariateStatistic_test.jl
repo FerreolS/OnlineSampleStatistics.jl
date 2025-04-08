@@ -111,6 +111,11 @@
         @test A ≈ B
         B = foldxd(UnivariateStatistic(4), x)
         @test A ≈ B
+
+        A = push!(UnivariateStatistic(Complex{Float64}, 2), x)
+        B = foldxt(UnivariateStatistic(Complex{Float64}, 2), Complex.(x))
+        @test A ≈ B
+
     end
 
     @testset "Weighted Data" begin
@@ -122,6 +127,11 @@
         @test mean(A) ≈ sum(w .* x) ./ sum(w)
         @test isapprox(var(A, corrected=false), sum(w .* (x .- mean(A)) .^ 2) ./ sum(w); rtol=1e-6)
         @test_logs (:warn, "The number of samples is not an integer. The variance is not corrected.") var(A)
+
+        using Transducers
+        A = fit!(UnivariateStatistic(Float64, Float64, 4), zip(x, w))
+        B = foldxd(UnivariateStatistic(Float64, Float64, 4), zip(x, w))
+        @test A ≈ B
     end
 
 end

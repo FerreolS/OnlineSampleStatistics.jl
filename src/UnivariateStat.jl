@@ -249,7 +249,7 @@ function Base.push!(A::UnivariateStatistic{T}, y::AbstractArray{T2}, w::Abstract
     return A
 end
 
-function Base.push!(A::UnivariateStatistic{T}, b::T2, w) where {T,T2<:Number}
+function Base.push!(A::UnivariateStatistic{T}, b::T2, w::Real) where {T,T2<:Number}
     promote_type(T, T2) == T || throw(ArgumentError("The input type $T2 is not promotable to $T"))
     push!(A, T(b), w)
 end
@@ -258,7 +258,7 @@ end
 
 @inline increment_weights!(A::UnivariateStatistic, x) = A.weights += x
 
-function Base.push!(A::UnivariateStatistic{T,1}, b::T, w::Number) where {T<:Number}
+function Base.push!(A::UnivariateStatistic{T,1}, b::T, w::Real) where {T<:Number}
     w == 0 && return A
     A.rawmoments[1] += w * inv(increment_weights!(A, w)) * (b - A.rawmoments[1])
     return A
@@ -290,7 +290,7 @@ end
 end =#
 
 
-@generated function Base.push!(A::UnivariateStatistic{T,P}, b::T, wb::Number) where {P,T<:Number}
+@generated function Base.push!(A::UnivariateStatistic{T,P}, b::T, wb::Real) where {P,T<:Number}
     code = Expr(:block)
     push!(code.args, quote
         wb == 0 && return A
@@ -421,6 +421,10 @@ end
 
 #Base.merge!(A::UnivariateStatistic, x::Number) = push!(A, x)
 OnlineStatsBase._fit!(A::UnivariateStatistic, x::Number) = push!(A, x)
+
+OnlineStatsBase._fit!(A::UnivariateStatistic, x::Number, w::Real) = push!(A, x, w)
+
+#OnlineStatsBase._fit!(A::UnivariateStatistic, x::Base.Iterators.Zip) = push!(A, x.is[1], x.is[2])
 #OnlineStatsBase._fit!(A::UnivariateStatistic, x::AbstractArray) = push!(A, x)
 
 OnlineStatsBase.value(A::UnivariateStatistic) = get_moments(A)
@@ -433,3 +437,14 @@ end
 
 
 OnlineStatsBase._merge!(A::UnivariateStatistic, B::UnivariateStatistic) = merge!(A, B)
+
+
+function OnlineStatsBase.fit!(o::UnivariateStatistic{I}, y::Iterators.Zip{<:Tuple{AbstractArray{T},<:AbstractArray{<:Real}}}) where {I,T}
+    I == T || error("The input for $(name(o,false,false)) is $I. Found $T.")
+    for (yi, wi) in y
+        OnlineStatsBase.fit!(o, yi, wi)
+    end
+    o
+end
+OnlineStatsBase.fit!(o::UnivariateStatistic{T}, y::T, w::Real) where {T} = (OnlineStatsBase._fit!(o, y, w); return o)
+OnlineStatsBase.fit!(o::UnivariateStatistic{T}, y::Tuple{T,<:Real}) where {T} = (OnlineStatsBase._fit!(o, y[1], y[2]); return o)
