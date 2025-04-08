@@ -102,7 +102,7 @@
         @test_throws ArgumentError UnivariateStatistic(2, 1, 0)
     end
 
-    @testset " Transducers Tests" begin
+    @testset "Transducers Tests" begin
         using Transducers
         x = 1e9 .+ (randn(10^6)) .^ 2
         A = UnivariateStatistic(4)
@@ -113,13 +113,13 @@
         @test A ≈ B
     end
 
-    @testset "Weighted Tests" begin
+    @testset "Weighted Data" begin
         x = randn(1_000)
         w = rand(size(x)...)
         A = UnivariateStatistic(x, w, 4)
-        @test nobs(A) == sum(w)
+        @test nobs(A) ≈ sum(w)
         @test mean(A) ≈ sum(w .* x) ./ sum(w)
-        @test var(A) ≈ sum(w .* abs2.(x)) ./ sum(w)
+        @test isapprox(var(A; corrected=false), sum(w .* (x .- mean(A)) .^ 2) ./ sum(w); rtol=1e-6)
     end
 
 end

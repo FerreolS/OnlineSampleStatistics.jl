@@ -186,7 +186,7 @@ function Statistics.var(A::UnivariateStatistic{T,K,W}; corrected=true) where {T,
     N = nobs(A)
     N == 0 && return T(NaN)
     if corrected
-        if Int <: Integer
+        if W <: Integer
             return get_rawmoments(A, 2) / (N - 1)
         else
             @warn("The number of samples is not an integer. The variance is not corrected.")
