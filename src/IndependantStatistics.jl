@@ -35,13 +35,13 @@ function IndependentStatistic(K::Int, x::AbstractArray{T,N}, w::AbstractArray{TW
         A = IndependentStatistic(T, K, size(x), TW)
         push!(A, x, w)
     else
-        maximum(dims) ≥ N || throw(ArgumentError("IndependentStatistic : $(length(dims)) > $N"))
+        maximum(dims) ≤ N || throw(ArgumentError("IndependentStatistic : $(maximum(dims)) > $N"))
         sz = vcat(size(x)...)
         sz[vcat(dims...)] .= 1
         A = IndependentStatistic(T, K, NTuple{N,Int}(sz), TW)
         #foreach((y, z) -> push!(A, reshape(y, sz...), reshape(z, sz...)), zip(eachslice(x; dims=dims), eachslice(w; dims=dims)))
         for (y, z) ∈ zip(eachslice(x; dims=dims), eachslice(w; dims=dims))
-            push!(A, y, z)
+            push!(A, reshape(y, sz...), reshape(z, sz...))
         end
     end
     return A
@@ -110,7 +110,7 @@ Base.push!(A::IndependentStatistic, x) = push!(A, x, 1)
 Base.push!(A::IndependentStatistic{T}, x::AbstractArray{T2}, w) where {T,T2} = push!(A, T.(x), w)
 
 function Base.push!(A::IndependentStatistic{T,N,K,W}, x::AbstractArray{T,N2}, w::AbstractArray{<:Real,N2}) where {T,N,N2,K,W}
-    N2 ≥ N || throw(ArgumentError("push! : N2 < N"))
+    N2 ≥ N || throw(ArgumentError("push! : N2 < N :  $N2 < $N; $(size(x)) and $(size(A))"))
     size(x) == size(w) || throw(ArgumentError("IndependentStatistic : size(x) != size(w)"))
 
     szx = vcat(size(x)...)
