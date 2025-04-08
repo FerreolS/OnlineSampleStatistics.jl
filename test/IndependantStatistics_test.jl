@@ -17,15 +17,24 @@ using ZippedArrays, StructuredArrays
 
     # Test mean calculation
     @testset "Mean & variance Calculation" begin
-        A = IndependentStatistic(5, (3, 3))
-        push!(A, [1.0 2.0 3.0; 4.0 5.0 6.0; 7.0 8.0 9.0])
-        @test mean(A) == [1.0 2.0 3.0; 4.0 5.0 6.0; 7.0 8.0 9.0]
+        data = [1.0 2.0 3.0; 4.0 5.0 6.0; 7.0 8.0 9.0]
 
-        @inferred(push!(A, -1 .* [1.0 2.0 3.0; 4.0 5.0 6.0; 7.0 8.0 9.0]))
-        @test @inferred(var(A; corrected=false)) == [1.0 2.0 3.0; 4.0 5.0 6.0; 7.0 8.0 9.0] .^ 2
-        @test @inferred(var(A)) == 2 .* [1.0 2.0 3.0; 4.0 5.0 6.0; 7.0 8.0 9.0] .^ 2
+        A = IndependentStatistic(5, (3, 3))
+        push!(A, data)
+        @test A == IndependentStatistic(5, data)
+        @test A == [UnivariateStatistic(d, 5) for d ∈ data]
+        @test mean(A) == data
+
+        @inferred(push!(A, -1 .* data))
+        @test @inferred(var(A; corrected=false)) == data .^ 2
+        @test @inferred(var(A)) == 2 .* data .^ 2
         @test @inferred(skewness(A)) == zeros(Float64, 3, 3)
         @test @inferred(kurtosis(A)) == -2.0 * ones(3, 3)
+        @test var(A) ≈ var.(A)
+        @test kurtosis(A) ≈ kurtosis.(A)
+        @test skewness(A) ≈ skewness.(A)
+        @test mean(A) ≈ mean.(A)
+        @test var(A; corrected=false) ≈ var.(A; corrected=false)
     end
 
 
