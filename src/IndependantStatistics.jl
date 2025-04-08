@@ -45,7 +45,7 @@ function IndependentStatistic(K::Int, x::AbstractArray{T,N}, w::AbstractArray{TW
         A = IndependentStatistic(T, K, NTuple{N,Int}(sz), TW)
         #foreach((y, z) -> push!(A, reshape(y, sz...), reshape(z, sz...)), zip(eachslice(x; dims=dims), eachslice(w; dims=dims)))
         for (y, z) ∈ zip(eachslice(x; dims=dims), eachslice(w; dims=dims))
-            push!(A, reshape(y, sz...), reshape(z, sz...))
+            _push!(A, reshape(y, sz...), reshape(z, sz...))
         end
     end
     return A
@@ -62,7 +62,7 @@ function IndependentStatistic(K::Int, x::AbstractArray{T,N}; dims=nothing) where
         sz = vcat(size(x)...)
         sz[vcat(dims...)] .= 1
         A = IndependentStatistic(T, K, NTuple{N,Int}(sz))
-        foreach(y -> push!(A, reshape(y, sz...), 1), eachslice(x; dims=dims))
+        foreach(y -> _push!(A, reshape(y, sz...), 1), eachslice(x; dims=dims))
     end
     return A
 end
@@ -125,10 +125,11 @@ function Base.push!(A::IndependentStatistic{T,N,K,W}, x::AbstractArray{T,N2}, w:
     singleton[sgltidx] .= false
 
     szA[sgltidx] == szx[sgltidx] || throw(ArgumentError("push! : size(A)=$(size(A)) != $(size(x))"))
-    # mapslices(y -> _push!(A, reshape(y, szA...)), x; dims=(1:ndims(x))[.!singleton])
     slc = NTuple{sum(singleton),Int}((1:N2)[singleton])
-    #foreach(y -> _push!(A, reshape(y, szA...)), eachslice(x; dims=slc))
-    foreach((y, z) -> push!(A, y, z), eachslice(zip(x, w); dims=slc, drop=(length(sgltidx) == length(szA))))
+
+    for (y, z) ∈ zip(eachslice(x; dims=slc, drop=(length(sgltidx) == length(szA))), eachslice(w; dims=slc, drop=(length(sgltidx) == length(szA))))
+        _push!(A, reshape(y, szA...), reshape(z, szA...))
+    end
     return A
 end
 
@@ -143,10 +144,10 @@ function Base.push!(A::IndependentStatistic{T,N}, x::AbstractArray{T,N2}, w::Rea
     singleton[sgltidx] .= false
 
     szA[sgltidx] == szx[sgltidx] || throw(ArgumentError("push! : size(A)=$(size(A)) != $(size(x))"))
-    # mapslices(y -> _push!(A, reshape(y, szA...)), x; dims=(1:ndims(x))[.!singleton])
     slc = NTuple{sum(singleton),Int}((1:N2)[singleton])
-    #foreach(y -> _push!(A, reshape(y, szA...)), eachslice(x; dims=slc))
-    foreach(y -> push!(A, y, w), eachslice(x; dims=slc, drop=(length(sgltidx) == length(szA))))
+    for y ∈ eachslice(x; dims=slc, drop=(length(sgltidx) == length(szA)))
+        _push!(A, reshape(y, szA...), w)
+    end
     return A
 end
 
@@ -159,11 +160,7 @@ end
 @inline increment!(A::AbstractArray, x) = A .+= x
 @inline increment_weights!(A::IndependentStatistic, x) = increment!(weights(A), x)
 
-Base.push!(A::IndependentStatistic{T,D}, b::AbstractArray{T,D}, w::Real) where {D,T<:Number} = _push!(A, b, w)
-
-Base.push!(A::IndependentStatistic{T,D}, b::AbstractArray{T,D}, w::AbstractArray{<:Real,D}) where {D,T<:Number} = _push!(A, b, w)
-
-@generated function _push!(A::IndependentStatistic{T,D,P}, b::AbstractArray{T,D}, wb::W) where {P,D,T<:Number,W<:Union{Number,AbstractArray{<:Number,D}}}
+@generated function _push!(A::IndependentStatistic{T,D,P}, b::AbstractArray{T,D}, wb::W) where {P,D,T<:Number,W<:Union{Real,AbstractArray{<:Number,D}}}
     code = Expr(:block)
     push!(code.args, quote
         wa = copy(weights(A))

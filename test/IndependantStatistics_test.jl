@@ -34,4 +34,14 @@ using ZippedArrays, StructuredArrays
         A = IndependentStatistic(2, (3, 3))
         @test_throws DimensionMismatch push!(A, [1.0 2.0; 3.0 4.0])
     end
+
+    @testset "Weighted Data" begin
+        dims = 3
+        x = randn(2, 3, 4)
+        w = (rand(size(x)...) .> 0.5)
+        A = IndependentStatistic(2, x, w, dims=dims)
+
+        @test mean(A) ≈ sum(w .* x; dims=dims) ./ sum(w; dims=dims)
+        @test var(A; corrected=false) ≈ sum(w .* (x .- mean(A)) .^ 2; dims=dims) ./ sum(w; dims=dims)
+    end
 end
