@@ -25,7 +25,11 @@ end
 function IndependentStatistic(::Type{T}, K::Int, sz::NTuple{N,Int}, ::Type{TW}) where {TW,T,N}
     K > 0 || throw(ArgumentError("Moment of order $K <= 0 undefined"))
     rawmoments = (zeros(T, sz) for _ in 1:K)
-    weights = zeros(TW, sz)
+    if TW == Bool
+        weights = zeros(Int, sz)
+    else
+        weights = zeros(TW, sz)
+    end
     ZippedArray{UnivariateStatistic{T,K,eltype(weights)}}(weights, rawmoments...)
 end
 
@@ -164,6 +168,7 @@ Base.push!(A::IndependentStatistic{T,D}, b::AbstractArray{T,D}, w::AbstractArray
     push!(code.args, quote
         wa = copy(weights(A))
         iN = inv.(increment_weights!(A, wb))
+        @. iN[!isfinite(iN)] = zero(T)
         δBA = @. (b - $get_rawmoments(A, 1))
         BoN = @. -wb * iN * δBA
         @. $get_rawmoments(A, 1) -= BoN
