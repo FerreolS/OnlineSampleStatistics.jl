@@ -257,38 +257,6 @@ end
 
 
 @inline increment_weights!(A::UnivariateStatistic, x) = A.weights += x
-#= 
-function Base.push!(A::UnivariateStatistic{T,1}, b::T, w::Real) where {T<:Number}
-    w == 0 && return A
-    A.rawmoments[1] += w * inv(increment_weights!(A, w)) * (b - A.rawmoments[1])
-    return A
-end
-
-function Base.push!(A::UnivariateStatistic{T,2}, b::T) where {T<:Number}
-    NA = weights(A)
-    iN = inv(increment_weights!(A, 1))
-    μA = A.rawmoments[1]
-
-    δBA = (b - μA)
-    A.rawmoments[1] += iN * δBA
-    A.rawmoments[2] += iN * NA * abs2(δBA)
-    return A
-end
- =#
-#= function Base.push!(A::UnivariateStatistic{T,2}, b::T, wb) where {T<:Number}
-    wb == 0 && return A
-    wa = weights(A)
-    μA = A.rawmoments[1]
-    iN = inv(increment_weights!(A, wb))
-    δBA = (b - μA)
-    BoN = -wb * iN * δBA
-    AoN = wa * iN * δBA
-
-    A.rawmoments[1] -= BoN
-    A.rawmoments[2] += wa * BoN^2 + wb * AoN^2
-    return A
-end =#
-
 
 @generated function Base.push!(A::UnivariateStatistic{T,P}, b::T, wb::Real) where {P,T<:Number}
     code = Expr(:block)

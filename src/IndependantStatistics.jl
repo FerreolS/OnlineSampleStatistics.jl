@@ -155,23 +155,6 @@ end
 @inline increment!(A::AbstractArray, x) = A .+= x
 @inline increment_weights!(A::IndependentStatistic, x) = increment!(weights(A), x)
 
-#= 
-function _push_!(A::IndependentStatistic{T,D,1}, b::AbstractArray{T,D}, w) where {T,D}
-    N = get_weights(A)
-    @. $get_rawmoments(A, 1) += w * inv($increment_weights!(A, w)) * (b - $get_rawmoments(A, 1))
-    return A
-end
-
-function _push_!(A::IndependentStatistic{T,D,2}, b::AbstractArray{T,D}, w) where {T,D}
-    N = increment!(weights(A), w)
-    NA = N .- 1
-    δBA = (b .- get_rawmoments(A, 1))
-    iN = inv.(N)
-    @. $get_rawmoments(A, 1) += iN * δBA
-    @. $get_rawmoments(A, 2) += iN * NA * δBA^2
-    return A
-end
- =#
 Base.push!(A::IndependentStatistic{T,D}, b::AbstractArray{T,D}, w::Real) where {D,T<:Number} = _push!(A, b, w)
 
 Base.push!(A::IndependentStatistic{T,D}, b::AbstractArray{T,D}, w::AbstractArray{<:Real,D}) where {D,T<:Number} = _push!(A, b, w)
