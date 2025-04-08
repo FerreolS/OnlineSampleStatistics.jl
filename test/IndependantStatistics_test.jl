@@ -17,12 +17,17 @@ using ZippedArrays, StructuredArrays
 
     # Test mean calculation
     @testset "Mean & variance Calculation" begin
+        using OnlineSampleStatistics: get_rawmoments, weights, get_moments
         data = [1.0 2.0 3.0; 4.0 5.0 6.0; 7.0 8.0 9.0]
 
         A = IndependentStatistic(5, (3, 3))
         push!(A, data)
         @test A == IndependentStatistic(5, data)
-        @test A == [UnivariateStatistic(d, 5) for d ∈ data]
+        B = [UnivariateStatistic(d, 5) for d ∈ data]
+        @test A == B
+        @test get_rawmoments(A, 1) == get_rawmoments(B, 1)
+        @test weights(A) == weights(B)
+        @test nobs(A) == nobs(B)
         @test mean(A) == data
 
         @inferred(push!(A, -1 .* data))

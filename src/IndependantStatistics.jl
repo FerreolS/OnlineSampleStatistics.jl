@@ -13,28 +13,13 @@ Returns an array where each element corresponds to the raw moments of the respec
 - An array of raw moments.
 
 """
-get_rawmoments(x::AbstractArray{UnivariateStatistic}) = map(x -> x.rawmoments, x)
-
-"""
-    get_weights(x::AbstractArray{UnivariateStatistic})
-
-Retrieve the weights from an array of `UnivariateStatistic` objects. 
-Returns an array where each element corresponds to the weights of the respective `UnivariateStatistic` in `x`.
-
-# Arguments
-- `x::AbstractArray{UnivariateStatistic}`: An array of `UnivariateStatistic` objects.
-
-# Returns
-- An array of weights.
-
-"""
-get_weights(x::AbstractArray{UnivariateStatistic}) = map(x -> x.weights, x)
+get_rawmoments(x::AbstractArray{<:UnivariateStatistic}) = map(x -> x.rawmoments, x)
 
 """
 
     weights(x::AbstractArray{UnivariateStatistic})
 
-Alias for `get_weights`. Retrieves the weights from an array of `UnivariateStatistic` objects.
+Retrieves the weights from an array of `UnivariateStatistic` objects.
 
 # Arguments
 - `x::AbstractArray{UnivariateStatistic}`: An array of `UnivariateStatistic` objects.
@@ -42,7 +27,7 @@ Alias for `get_weights`. Retrieves the weights from an array of `UnivariateStati
 # Returns
 - An array of weights.
 """
-weights(x::AbstractArray{UnivariateStatistic}) = map(x -> x.weights, x)
+weights(x::AbstractArray{<:UnivariateStatistic}) = map(x -> x.weights, x)
 
 """
     get_rawmoments(x::AbstractArray{UnivariateStatistic}, k::Int)
@@ -58,7 +43,7 @@ Returns an array where each element corresponds to the `k`-th raw moment of the 
 - An array of `k`-th raw moments.
 
 """
-get_rawmoments(x::AbstractArray{UnivariateStatistic}, k::Int) = map(y -> get_rawmoments(y, k), x)
+get_rawmoments(x::AbstractArray{<:UnivariateStatistic}, k::Int) = map(y -> get_rawmoments(y, k), x)
 """
 
     StatsBase.nobs(x::AbstractArray{UnivariateStatistic{T,K,Int}}) where {T,K}
@@ -73,7 +58,7 @@ Returns an array where each element corresponds to the number of observations of
 - An array of the number of observations.
 """
 
-StatsBase.nobs(x::AbstractArray{UnivariateStatistic{T,K,Int}}) where {T,K} = map(x -> nobs(x), x)
+StatsBase.nobs(x::AbstractArray{<:UnivariateStatistic}) = map(x -> nobs(x), x)
 
 """
     get_moments(x::AbstractArray{UnivariateStatistic}, k::Int)
@@ -88,7 +73,7 @@ Returns an array where each element corresponds to the `k`-th moment of the resp
 # Returns
 - An array of `k`-th moments.
 """
-get_moments(x::AbstractArray{UnivariateStatistic}, k::Int) = map(y -> get_moments(y, k), x)
+get_moments(x::AbstractArray{<:UnivariateStatistic}, k::Int) = map(y -> get_moments(y, k), x)
 
 #===  IndependentStatistic ===#
 
@@ -153,7 +138,6 @@ end
 #= getters on IndependentStatistic =#
 
 get_rawmoments(x::IndependentStatistic{T,N,K,I}) where {T,N,K,I} = @inbounds x.args[2:K+1]
-get_weights(x::IndependentStatistic) = @inbounds x.args[1]
 weights(x::IndependentStatistic) = @inbounds x.args[1]
 get_rawmoments(x::IndependentStatistic, k::Int) = @inbounds x.args[1+k]
 
