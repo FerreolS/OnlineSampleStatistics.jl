@@ -3,14 +3,14 @@ using ZippedArrays, StructuredArrays
 @testset "IndependentStatistic Tests" begin
     # Test constructor with default type
     @testset "Constructor Tests" begin
-        A = IndependentStatistic(2, (3, 3))
+        A = IndependentStatistic((3, 3), 5)
         @test size(A) == (3, 3)
         @test typeof(A) <: ZippedArray
     end
 
     # Test constructor with custom type
     @testset "other Type Constructor" begin
-        A = IndependentStatistic(Float32, 2, (4, 4))
+        A = IndependentStatistic(Float32, (4, 4), 2)
         @test size(A) == (4, 4)
         @test typeof(A) <: ZippedArray
     end
@@ -20,9 +20,9 @@ using ZippedArrays, StructuredArrays
         using OnlineSampleStatistics: get_rawmoments, weights, get_moments
         data = [1.0 2.0 3.0; 4.0 5.0 6.0; 7.0 8.0 9.0]
 
-        A = IndependentStatistic(5, (3, 3))
+        A = IndependentStatistic((3, 3), 5)
         push!(A, data)
-        @test A == IndependentStatistic(5, data)
+        @test A == IndependentStatistic(data, 5)
         @test @inferred(order(A)) == 5
         B = [UnivariateStatistic(d, 5) for d ∈ data]
         @test @inferred(order(B)) == 5
@@ -47,7 +47,7 @@ using ZippedArrays, StructuredArrays
 
     # Test error handling for invalid dimensions
     @testset "Error Handling" begin
-        A = IndependentStatistic(2, (3, 3))
+        A = IndependentStatistic((3, 3), 2)
         @test_throws DimensionMismatch push!(A, [1.0 2.0; 3.0 4.0])
     end
 
@@ -55,12 +55,12 @@ using ZippedArrays, StructuredArrays
         dims = 3
         x = randn(2, 3, 10)
         w = (rand(size(x)...) .> 0.1)
-        A = IndependentStatistic(2, x, w, dims=dims)
+        A = IndependentStatistic(x, w, 2; dims=dims)
 
         @test mean(A) ≈ sum(w .* x; dims=dims) ./ sum(w; dims=dims)
         @test var(A; corrected=false) ≈ sum(w .* (x .- mean(A)) .^ 2; dims=dims) ./ sum(w; dims=dims)
 
-        A = IndependentStatistic(Float64, 1, size(A), Float64)
+        A = IndependentStatistic(Float64, size(A), Float64, 1)
         @inferred push!(A, x, w)
         @test nobs(A) ≈ sum(w, dims=dims)
     end

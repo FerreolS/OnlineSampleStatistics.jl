@@ -83,15 +83,15 @@ IndependentStatistic{T,N,K,W} = ZippedArray{UnivariateStatistic{T,K,W},N,K2,I,A}
 
 
 #= constructor for IndependentStatistic =#
-IndependentStatistic(K::Int, sz::NTuple{N,Int}) where {N} = IndependentStatistic(Float64, K, sz)
+IndependentStatistic(sz::NTuple{N,Int}, K::Int) where {N} = IndependentStatistic(Float64, sz, K)
 
-function IndependentStatistic(::Type{T}, K::Int, sz::NTuple{N,Int}) where {T,N}
+function IndependentStatistic(::Type{T}, sz::NTuple{N,Int}, K::Int) where {T,N}
     K > 0 || throw(ArgumentError("Moment of order $K <= 0 undefined"))
     rawmoments = (zeros(T, sz) for _ in 1:K)
     ZippedArray{UnivariateStatistic{T,K,Int}}(MutableUniformArray(0, sz...), rawmoments...)
 end
 
-function IndependentStatistic(::Type{T}, K::Int, sz::NTuple{N,Int}, ::Type{TW}) where {TW,T,N}
+function IndependentStatistic(::Type{T}, sz::NTuple{N,Int}, ::Type{TW}, K::Int) where {TW,T,N}
     K > 0 || throw(ArgumentError("Moment of order $K <= 0 undefined"))
     rawmoments = (zeros(T, sz) for _ in 1:K)
     if TW == Bool
@@ -102,16 +102,16 @@ function IndependentStatistic(::Type{T}, K::Int, sz::NTuple{N,Int}, ::Type{TW}) 
     ZippedArray{UnivariateStatistic{T,K,eltype(weights)}}(weights, rawmoments...)
 end
 
-function IndependentStatistic(K::Int, x::AbstractArray{T,N}, w::AbstractArray{TW,N}; dims=nothing) where {TW,T,N}
+function IndependentStatistic(x::AbstractArray{T,N}, w::AbstractArray{TW,N}, K::Int; dims=nothing) where {TW,T,N}
     size(x) == size(w) || throw(ArgumentError("IndependentStatistic : size(x) != size(w)"))
     if dims === nothing
-        A = IndependentStatistic(T, K, size(x), TW)
+        A = IndependentStatistic(T, size(x), TW, K)
         push!(A, x, w)
     else
         maximum(dims) ≤ N || throw(ArgumentError("IndependentStatistic : $(maximum(dims)) > $N"))
         sz = vcat(size(x)...)
         sz[vcat(dims...)] .= 1
-        A = IndependentStatistic(T, K, NTuple{N,Int}(sz), TW)
+        A = IndependentStatistic(T, NTuple{N,Int}(sz), TW, K)
         #foreach((y, z) -> push!(A, reshape(y, sz...), reshape(z, sz...)), zip(eachslice(x; dims=dims), eachslice(w; dims=dims)))
         for (y, z) ∈ zip(eachslice(x; dims=dims), eachslice(w; dims=dims))
             _push!(A, reshape(y, sz...), reshape(z, sz...))
@@ -122,15 +122,15 @@ end
 
 
 
-function IndependentStatistic(K::Int, x::AbstractArray{T,N}; dims=nothing) where {T,N}
+function IndependentStatistic(x::AbstractArray{T,N}, K::Int; dims=nothing) where {T,N}
     if dims === nothing
-        A = IndependentStatistic(T, K, size(x))
+        A = IndependentStatistic(T, size(x), K)
         push!(A, x, 1)
     else
         maximum(dims) ≥ N || throw(ArgumentError("IndependentStatistic : $(maximum(dims)) > $N"))
         sz = vcat(size(x)...)
         sz[vcat(dims...)] .= 1
-        A = IndependentStatistic(T, K, NTuple{N,Int}(sz))
+        A = IndependentStatistic(T, NTuple{N,Int}(sz), K)
         foreach(y -> _push!(A, reshape(y, sz...), 1), eachslice(x; dims=dims))
     end
     return A
