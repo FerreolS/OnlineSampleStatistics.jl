@@ -99,7 +99,7 @@ julia> M = UnivariateStatistic(1); # accumulating mean only (first moment)
 julia> @btime fit!(m,x)
   274.430 ms (0 allocations: 0 bytes)
 
-julia> @btime push!(A,x);
+julia> @btime push!(M,x);
   280.195 ms (0 allocations: 0 bytes)
 ```
 
@@ -109,7 +109,7 @@ julia> @btime push!(A,x);
 julia> v = Variance();
 julia> A = UnivariateStatistic(2); 
 
-julia> @btime fit!(m,x)
+julia> @btime fit!(v,x);
   311.701 ms (0 allocations: 0 bytes)
 
 julia> @btime push!(A,x);

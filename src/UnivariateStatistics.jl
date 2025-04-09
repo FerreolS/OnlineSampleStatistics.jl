@@ -229,23 +229,35 @@ Pushes a new samples `y` into the UnivariateStatistic `A`.
 """
 function Base.push!(A::UnivariateStatistic{T}, y::AbstractArray{T2}) where {T,T2}
     T == eltype(y) || promote_type(T, eltype(y)) == T || throw(ArgumentError("The input for $(typeof(A)) is $T. Found $T2."))
-    for x ∈ y
-        A = push!(A, x)
-    end
+    push!(A, T.(y))
     return A
 end
 
-Base.push!(A::UnivariateStatistic, b::Number) = push!(A, b, 1)
+Base.push!(A::UnivariateStatistic{T}, y::AbstractArray{T}) where {T} = foreach(x -> push!(A, x), y)
 
-function Base.push!(A::UnivariateStatistic{T}, y::AbstractArray{T2}, w::AbstractArray) where {T,T2}
+function Base.push!(A::UnivariateStatistic{T}, y::AbstractArray{T2}, w) where {T,T2}
     T == eltype(y) || promote_type(T, eltype(y)) == T || throw(ArgumentError("The input for $(typeof(A)) is $T. Found $T2."))
+    push!(A, T.(y), w)
+end
+
+function Base.push!(A::UnivariateStatistic{T}, y::AbstractArray{T}, w::AbstractArray) where {T}
     for (x, v) ∈ zip(y, w)
-        A = push!(A, x, v)
+        push!(A, x, v)
     end
     return A
 end
 
-function Base.push!(A::UnivariateStatistic{T}, b::T2, w::Real) where {T,T2<:Number}
+function Base.push!(A::UnivariateStatistic{T}, y::AbstractArray{T}, w::Real) where {T}
+    if (w == 1)
+        foreach(x -> push!(A, x), y)
+    else
+        foreach(x -> push!(A, x, w), y)
+    end
+    return A
+end
+
+
+function Base.push!(A::UnivariateStatistic{T}, b::T2, w::Real) where {T<:Number,T2<:Number}
     promote_type(T, T2) == T || throw(ArgumentError("The input type $T2 is not promotable to $T"))
     push!(A, T(b), w)
 end
@@ -253,6 +265,46 @@ end
 
 
 @inline increment_weights!(A::UnivariateStatistic, x) = A.weights += x
+
+function Base.push!(A::UnivariateStatistic{T,1}, b::T) where {T<:Number}
+    μA, = A.rawmoments
+    A.rawmoments[1] += inv(A.weights += 1) * (b - μA)
+    return A
+end
+
+
+
+function Base.push!(A::UnivariateStatistic{T,1}, b::T, w::Real) where {T<:Number}
+    w == 0 && return A
+    A.rawmoments[1] += w * inv(increment_weights!(A, w)) * (b - A.rawmoments[1])
+    return A
+end
+
+function Base.push!(A::UnivariateStatistic{T,2}, b::T) where {T<:Number}
+    NA = weights(A)
+    iN = inv(increment_weights!(A, 1))
+    μA, = A.rawmoments
+
+    δBA = (b - μA)
+    A.rawmoments[1] += iN * δBA
+    A.rawmoments[2] += iN * NA * abs2(δBA)
+    return A
+end
+
+function Base.push!(A::UnivariateStatistic{T,2}, b::T, wb::Real) where {T<:Number}
+    wb == 0 && return A
+    wa = weights(A)
+    μA, _ = A.rawmoments
+    iN = inv(increment_weights!(A, wb))
+    δBA = (b - μA)
+    BoN = -wb * iN * δBA
+    AoN = wa * iN * δBA
+
+    A.rawmoments[1] -= BoN
+    A.rawmoments[2] += wa * abs2(BoN) + wb * abs2(AoN)
+
+    return A
+end
 
 @generated function Base.push!(A::UnivariateStatistic{T,P}, b::T, wb::Real) where {P,T<:Number}
     code = Expr(:block)
@@ -276,6 +328,29 @@ end
     end
     push!(code.args, quote
         A.rawmoments[2] += wa * abs2(BoN) + wb * abs2(AoN)
+    end)
+    push!(code.args, :(return A))
+    return code
+end
+
+@generated function Base.push!(A::UnivariateStatistic{T,P,Int}, b::T) where {P,T<:Number}
+    code = Expr(:block)
+    push!(code.args, quote
+        NA = weights(A)
+        N = NA + 1
+        iN = inv(increment_weights!(A, 1))
+        μA, = A.rawmoments
+        δBA = (b - μA)
+    end)
+    for p in P:-1:3
+        push!(code.args, :(A.rawmoments[$p] += (NA * (-iN)^$p + (NA * iN)^$p) * δBA^$p))
+        for k in 1:(p-2)
+            push!(code.args, :(A.rawmoments[$p] += binomial($p, $k) * (A.rawmoments[$p-$k] * (-δBA * iN)^$k)))
+        end
+    end
+    push!(code.args, quote
+        A.rawmoments[1] += iN * δBA
+        A.rawmoments[2] += iN * NA * δBA^2
     end)
     push!(code.args, :(return A))
     return code
