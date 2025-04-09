@@ -1,17 +1,17 @@
 module OnlineSampleStatistics
 
 export UnivariateStatistic,
+    IndependentStatistic,
     mean,
     var,
     nobs,
     skewness,
     kurtosis,
     weights,
-    order,
-    IndependentStatistic
+    order
 
 
-include("UnivariateStat.jl")
+include("UnivariateStatistics.jl")
 include("IndependantStatistics.jl")
 
 end
