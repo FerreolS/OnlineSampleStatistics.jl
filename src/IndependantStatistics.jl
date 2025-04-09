@@ -75,6 +75,8 @@ Returns an array where each element corresponds to the `k`-th moment of the resp
 """
 get_moments(x::AbstractArray{<:UnivariateStatistic}, k::Int) = map(y -> get_moments(y, k), x)
 
+order(::AbstractArray{<:UnivariateStatistic{T,K}}) where {T,K} = K
+
 #===  IndependentStatistic ===#
 
 IndependentStatistic{T,N,K,W} = ZippedArray{UnivariateStatistic{T,K,W},N,K2,I,A} where {I,A,K2}
@@ -140,6 +142,7 @@ end
 get_rawmoments(x::IndependentStatistic{T,N,K,I}) where {T,N,K,I} = @inbounds x.args[2:K+1]
 weights(x::IndependentStatistic) = @inbounds x.args[1]
 get_rawmoments(x::IndependentStatistic, k::Int) = @inbounds x.args[1+k]
+order(::IndependentStatistic{T,N,K}) where {T,N,K} = K
 
 #= statistic functions =#
 StatsBase.nobs(x::IndependentStatistic) = @inbounds x.args[1]

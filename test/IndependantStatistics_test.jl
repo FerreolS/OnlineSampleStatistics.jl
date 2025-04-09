@@ -23,7 +23,9 @@ using ZippedArrays, StructuredArrays
         A = IndependentStatistic(5, (3, 3))
         push!(A, data)
         @test A == IndependentStatistic(5, data)
+        @test @inferred(order(A)) == 5
         B = [UnivariateStatistic(d, 5) for d ∈ data]
+        @test @inferred(order(B)) == 5
         @test A == B
         @test get_rawmoments(A, 1) == get_rawmoments(B, 1)
         @test weights(A) == weights(B)

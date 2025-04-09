@@ -146,6 +146,9 @@ StatsBase.nobs(A::UnivariateStatistic) = A.weights
 weights(A::UnivariateStatistic{T,K,W}) where {T,K,W<:Number} = A.weights
 
 
+order(::UnivariateStatistic{T,K}) where {T,K} = K
+
+
 function get_rawmoments(A::UnivariateStatistic{T,K,I}, k::Int) where {T,K,I}
     k ≤ K || throw(ArgumentError("$k moments are not available for type $(typeof(A))"))
     return A.rawmoments[k]

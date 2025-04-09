@@ -7,6 +7,7 @@ export UnivariateStatistic,
     skewness,
     kurtosis,
     weights,
+    order,
     IndependentStatistic
 
 

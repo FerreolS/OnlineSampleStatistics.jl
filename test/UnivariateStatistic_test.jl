@@ -68,6 +68,7 @@
         @test @inferred isnan(skewness(A))
         @test @inferred isnan(kurtosis(A))
         push!(A, x)
+        @test @inferred(order(A)) == 4
         @test @inferred mean(A) ≈ mean(x)
         @test @inferred isapprox(var(A), var(x); rtol=1e-6)
         @test @inferred isapprox(var(A; corrected=false), var(x; corrected=false); rtol=1e-6)
