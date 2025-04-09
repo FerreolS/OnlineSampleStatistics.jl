@@ -228,6 +228,50 @@ end
 end
 @inline increment!(A::AbstractArray, x) = A .+= x
 @inline increment_weights!(A::IndependentStatistic, x) = increment!(weights(A), x)
+#= NOT WEIGHTED DATA =#
+
+function Base.push!(A::IndependentStatistic{T,D,1}, b::AbstractArray{T,D}) where {T<:Number,D}
+    iN = inv.(increment_weights!(A, 1))
+    @. $get_rawmoments(A, 1) += iN * (b - $get_rawmoments(A, 1))
+    return A
+end
+
+
+function Base.push!(A::IndependentStatistic{T,D,2}, b::AbstractArray{T,D}) where {T<:Number,D}
+    wa = copy(weights(A))
+    iN = inv.(increment_weights!(A, 1))
+    δBA = @. (b - $get_rawmoments(A, 1))
+    @. $get_rawmoments(A, 1) += iN * δBA
+    @. $get_rawmoments(A, 2) += iN * wa * abs2(δBA)
+    return A
+end
+
+
+@generated function Base.push!(A::IndependentStatistic{T,D,P}, b::AbstractArray{T,D}) where {D,P,T<:Number}
+    code = Expr(:block)
+    push!(code.args, quote
+        wa = copy(weights(A))
+        iN = inv.(increment_weights!(A, 1))
+        δBA = @. (b - $get_rawmoments(A, 1))
+        @. $get_rawmoments(A, 1) += iN * δBA
+        if P == 1
+            return A
+        end
+    end)
+    for p in P:-1:3
+        push!(code.args, :(@. $get_rawmoments(A, $p) += (wa * (-iN)^$p + (wa * iN)^$p) * δBA^$p))
+        for k in 1:(p-2)
+            push!(code.args, :(@. $get_rawmoments(A, $p) += binomial($p, $k) * (@. $get_rawmoments(A, $p - $k) * (-δBA * iN)^$k)))
+        end
+    end
+    push!(code.args, quote
+        @. $get_rawmoments(A, 2) += iN * wa * abs2(δBA)
+    end)
+    push!(code.args, :(return A))
+    return code
+end
+
+
 
 @generated function _push!(A::IndependentStatistic{T,D,P}, b::AbstractArray{T,D}, wb::W) where {P,D,T<:Number,W<:Union{Real,AbstractArray{<:Number,D}}}
     code = Expr(:block)
