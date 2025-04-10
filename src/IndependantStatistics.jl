@@ -179,7 +179,7 @@ end
 
 
 
-Base.push!(A::IndependentStatistic, x) = push!(A, x, 1)
+#Base.push!(A::IndependentStatistic, x) = push!(A, x, 1)
 Base.push!(A::IndependentStatistic{T}, x::AbstractArray{T2}, w) where {T,T2} = push!(A, T.(x), w)
 
 function Base.push!(A::IndependentStatistic{T,N,K,W}, x::AbstractArray{T,N2}, w::AbstractArray{<:Real,N2}) where {T,N,N2,K,W}
@@ -215,7 +215,25 @@ function Base.push!(A::IndependentStatistic{T,N}, x::AbstractArray{T,N2}, w::Rea
     szA[sgltidx] == szx[sgltidx] || throw(DimensionMismatch("push! : size(A) incompatible with size(x)"))
     slc = NTuple{sum(singleton),Int}((1:N2)[singleton])
     for y ∈ eachslice(x; dims=slc, drop=(length(sgltidx) == length(szA)))
-        _push!(A, reshape(y, szA...), w)
+        push!(A, reshape(y, szA...), w)
+    end
+    return A
+end
+
+function Base.push!(A::IndependentStatistic{T,N}, x::AbstractArray{T,N2}) where {T,N,N2}
+    N2 ≥ N || throw(ArgumentError("push! : N2 < N"))
+
+    szx = vcat(size(x)...)
+    szA = vcat(size(A)...)
+
+    sgltidx = findall(szA .!= 1)
+    singleton = trues(N2)
+    singleton[sgltidx] .= false
+
+    szA[sgltidx] == szx[sgltidx] || throw(DimensionMismatch("push! : size(A) incompatible with size(x)"))
+    slc = NTuple{sum(singleton),Int}((1:N2)[singleton])
+    for y ∈ eachslice(x; dims=slc, drop=(length(sgltidx) == length(szA)))
+        push!(A, reshape(y, szA...))
     end
     return A
 end
@@ -273,7 +291,7 @@ end
 
 
 
-@generated function _push!(A::IndependentStatistic{T,D,P}, b::AbstractArray{T,D}, wb::W) where {P,D,T<:Number,W<:Union{Real,AbstractArray{<:Number,D}}}
+@generated function Base.push!(A::IndependentStatistic{T,D,P}, b::AbstractArray{T,D}, wb::W) where {P,D,T<:Number,W<:Union{Real,AbstractArray{<:Number,D}}}
     code = Expr(:block)
     push!(code.args, quote
         wa = copy(weights(A))
