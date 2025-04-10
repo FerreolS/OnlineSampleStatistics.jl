@@ -87,19 +87,22 @@ IndependentStatistic(sz::NTuple{N,Int}, K::Int) where {N} = IndependentStatistic
 
 function IndependentStatistic(::Type{T}, sz::NTuple{N,Int}, K::Int) where {T,N}
     K > 0 || throw(ArgumentError("Moment of order $K <= 0 undefined"))
-    rawmoments = (zeros(T, sz) for _ in 1:K)
-    ZippedArray{UnivariateStatistic{T,K,Int}}(MutableUniformArray(0, sz...), rawmoments...)
+    rawmoments = (zeros(T, sz) .^ k for k in 1:K)
+    r = init_rawmoments(Val{T}(), Val{K}(), rawmoments...)
+    ZippedArray{UnivariateStatistic{T,K,Int}}(MutableUniformArray(0, sz...), r...)
 end
 
 function IndependentStatistic(::Type{T}, sz::NTuple{N,Int}, ::Type{TW}, K::Int) where {TW,T,N}
     K > 0 || throw(ArgumentError("Moment of order $K <= 0 undefined"))
-    rawmoments = (zeros(T, sz) for _ in 1:K)
+    rawmoments = collect(zeros(T, sz) .^ k for k in 1:K)
     if TW == Bool
         weights = zeros(Int, sz)
     else
         weights = zeros(TW, sz)
     end
-    ZippedArray{UnivariateStatistic{T,K,eltype(weights)}}(weights, rawmoments...)
+    r = init_rawmoments(Val{T}(), Val{K}(), rawmoments...)
+    ZippedArray{UnivariateStatistic{T,K,TW}}(weights, r...)
+
 end
 
 function IndependentStatistic(x::AbstractArray{T,N}, w::AbstractArray{TW,N}, K::Int; dims=nothing) where {TW,T,N}
@@ -252,12 +255,17 @@ end
 @inline increment_weights!(A::IndependentStatistic, x) = increment!(weights(A), x)
 #= NOT WEIGHTED DATA =#
 
-function _push!(A::IndependentStatistic{T,D,1}, b::AbstractArray{T,D}) where {T<:Number,D}
+#= function _push!(A::IndependentStatistic{T,D,1}, b::AbstractArray{T,D}) where {T<:Number,D}
     iN = inv.(increment_weights!(A, 1))
     @. $get_rawmoments(A, 1) += iN * (b - $get_rawmoments(A, 1))
     return A
 end
-
+ =#
+function _push!(A::IndependentStatistic{T,D,1}, b::AbstractArray{T,D}) where {T<:Number,D}
+    for i in eachindex(A, b)
+        A[i] = push!(A[i], b[i])
+    end
+end
 
 function _push!(A::IndependentStatistic{T,D,2}, b::AbstractArray{T,D}) where {T<:Number,D}
     wa = copy(weights(A))
@@ -294,6 +302,13 @@ end
 end
 
 
+function _push!(A::IndependentStatistic{T,D,1}, b::AbstractArray{T,D}, wb::AbstractArray{<:Real,D}) where {T<:Number,D}
+    @show A[1], b[1], wb[1]
+
+    for i in eachindex(A, b, wb)
+        push!(A[i], b[i], wb[i])
+    end
+end
 
 @generated function _push!(A::IndependentStatistic{T,D,P}, b::AbstractArray{T,D}, wb::W) where {P,D,T<:Real,W<:Union{Real,AbstractArray{<:Real,D}}}
     code = Expr(:block)

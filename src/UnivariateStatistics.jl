@@ -23,23 +23,33 @@ mutable struct UnivariateStatistic{T,K,I,R} <: OnlineStatsBase.OnlineStat{T}
     #rawmoments::Vector{T}
     #rawmoments::NTuple{K,T}
     rawmoments::R
-    function UnivariateStatistic{T,K,I}(weights::I, rawmoments::Vector{T}) where {T,K,I}
+    function UnivariateStatistic{T,K,I}(weights::I, rawmoments::AbstractVector) where {T,K,I}
         K == length(rawmoments) || throw(ArgumentError("The length of rawmoments $(length(rawmoments)) must be equal to $K"))
         nonnegative(weights) || throw(ArgumentError("weights can't be negative"))
-        r = init_rawmoments(tuple(rawmoments...))
+        r = init_rawmoments(Val{T}(), Val{K}(), rawmoments...)
         new{T,K,I,typeof(r)}(weights, r)
     end
-    function UnivariateStatistic{T,K,I}(weights::I, rawmoments::Tuple) where {T,K,I}
+    function UnivariateStatistic{T,K,I}(weights::I, rawmoments...) where {T,K,I}
+        #@show eltype(rawmoments), T
         nonnegative(weights) || throw(ArgumentError("weights can't be negative"))
-        r = init_rawmoments(rawmoments)
-        new{T,K,I,typeof(rawmoments)}(weights, r)
+        r = init_rawmoments(Val{T}(), Val{K}(), rawmoments...)
+        #@show T, K, I, typeof(r)
+        new{T,K,I,typeof(r)}(weights, r)
     end
 
 end
 
 @generated function init_rawmoments(rawmoments::NTuple{K,T}) where {K,T}
     ex = Expr(:tuple)
-    push!(ex.args, :($(Symbol("m1")) = rawmoments[1]))
+    push!(ex.args, :($(Symbol("m1")) = first(rawmoments)))
+    for k = 2:K
+        push!(ex.args, :($(Symbol("m" * "$k")) = zero($T)^$k))
+    end
+    return ex
+end
+@generated function init_rawmoments(::Val{T}, ::Val{K}, rawmoments...) where {K,T}
+    ex = Expr(:tuple)
+    push!(ex.args, :($(Symbol("m1")) = first(rawmoments)))
     for k = 2:K
         push!(ex.args, :($(Symbol("m" * "$k")) = zero($T)^$k))
     end
@@ -88,7 +98,7 @@ function UnivariateStatistic(weights::I, rawmoments::Vector{T}) where {T,I}
 end
 
 #UnivariateStatistic{T,K,I}(weights::I, rawmoments...) where {T,K,I} = UnivariateStatistic{T,K,I}(weights, vcat(rawmoments...))
-UnivariateStatistic{T,K,I}(weights::I, rawmoments...) where {T,K,I} = UnivariateStatistic{T,K,I}(weights, rawmoments)
+#UnivariateStatistic{T,K,I}(weights::I, rawmoments...) where {T,K,I} = UnivariateStatistic{T,K,I}(weights, rawmoments...)
 
 UnivariateStatistic(x::T, K::Int) where {T<:AbstractFloat} = UnivariateStatistic(x, 1, K)
 UnivariateStatistic(x::T, K::Int) where {T<:Number} = UnivariateStatistic(Float64(x), 1, K)
@@ -178,7 +188,7 @@ Compute the k-th moment of a UnivariateStatistic `A`.
 # Returns
 - The k-th moment of the statistic. If it is empty, the function returns `0`. 
 """
-get_moments(A::UnivariateStatistic{T,K,I}, k) where {T,K,I} = ifelse((N = weights(A)) == 0, 0, get_rawmoments(A, k) / ifelse(k == 1, 1, N))
+get_moments(A::UnivariateStatistic{T,K,I}, k) where {T,K,I} = ifelse((N = weights(A)) == 0, zero(T)^k, get_rawmoments(A, k) / ifelse(k == 1, 1, N))
 get_moments(A::UnivariateStatistic{T,K}) where {T,K} = [get_moments(A, k) for k in 1:K]
 
 """
@@ -324,12 +334,17 @@ end
 
 #= WEIGHTED DATA =#
 
-function Base.push!(A::UnivariateStatistic{T,1}, b::T, w::Real) where {T<:Number}
+#= function Base.push!(A::UnivariateStatistic{T,1}, b::T, w::Real) where {T<:Number}
     w == 0 && return A
     A.rawmoments = A.rawmoments .+ (w * inv(increment_weights!(A, w)) * (b - A.rawmoments[1]))
     return A
-end
+end =#
 
+function Base.push!(A::UnivariateStatistic{T,1}, b::T, w::Real) where {T<:Number}
+    (; m1,) = A.rawmoments
+    A.rawmoments = (; m1=(m1 + (w * inv(A.weights += 1) * (b - m1))))
+    return A
+end
 
 function Base.push!(A::UnivariateStatistic{T,2}, b::T, wb::Real) where {T<:Number}
     wb == 0 && return A
