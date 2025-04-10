@@ -18,23 +18,33 @@ push!(A, 4.0)  # Add a new data point
 ```
 """
 
-mutable struct UnivariateStatistic{T,K,I} <: OnlineStatsBase.OnlineStat{T}
+mutable struct UnivariateStatistic{T,K,I,R} <: OnlineStatsBase.OnlineStat{T}
     weights::I
     #rawmoments::Vector{T}
-    rawmoments::NTuple{K,T}
+    #rawmoments::NTuple{K,T}
+    rawmoments::R
     function UnivariateStatistic{T,K,I}(weights::I, rawmoments::Vector{T}) where {T,K,I}
         K == length(rawmoments) || throw(ArgumentError("The length of rawmoments $(length(rawmoments)) must be equal to $K"))
         nonnegative(weights) || throw(ArgumentError("weights can't be negative"))
-        new{T,K,I}(weights, tuple(rawmoments...))
+        r = init_rawmoments(tuple(rawmoments...))
+        new{T,K,I,typeof(r)}(weights, r)
     end
-    function UnivariateStatistic{T,K,I}(weights::I, rawmoments::NTuple{K,T}) where {T,K,I}
+    function UnivariateStatistic{T,K,I}(weights::I, rawmoments::Tuple) where {T,K,I}
         nonnegative(weights) || throw(ArgumentError("weights can't be negative"))
-        new{T,K,I}(weights, rawmoments)
+        r = init_rawmoments(rawmoments)
+        new{T,K,I,typeof(rawmoments)}(weights, r)
     end
 
 end
 
-
+@generated function init_rawmoments(rawmoments::NTuple{K,T}) where {K,T}
+    ex = Expr(:tuple)
+    push!(ex.args, :($(Symbol("m1")) = rawmoments[1]))
+    for k = 2:K
+        push!(ex.args, :($(Symbol("m" * "$k")) = zero($T)^$k))
+    end
+    return ex
+end
 """
     UnivariateStatistic(x::T,K::Int) where {T<:Number}
 
@@ -271,8 +281,8 @@ end
 #= NOT WEIGHTED DATA =#
 
 function Base.push!(A::UnivariateStatistic{T,1}, b::T) where {T<:Number}
-    μA, = A.rawmoments
-    A.rawmoments = A.rawmoments .+ (inv(A.weights += 1) * (b - μA))
+    (; m1,) = A.rawmoments
+    A.rawmoments = (; m1=(m1 + (inv(A.weights += 1) * (b - m1))))
     return A
 end
 
@@ -280,10 +290,10 @@ end
 function Base.push!(A::UnivariateStatistic{T,2}, b::T) where {T<:Number}
     NA = weights(A)
     iN = inv(increment_weights!(A, 1))
-    μA, Ma = A.rawmoments
+    (; m1, m2) = A.rawmoments
 
-    δBA = (b - μA)
-    A.rawmoments = (μA + iN * δBA, Ma + iN * NA * abs2(δBA))
+    δBA = (b - m1)
+    A.rawmoments = (; m1=m1 + iN * δBA, m2=m2 + iN * NA * abs2(δBA))
     return A
 end
 
