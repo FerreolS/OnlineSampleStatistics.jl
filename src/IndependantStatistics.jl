@@ -114,7 +114,7 @@ function IndependentStatistic(x::AbstractArray{T,N}, w::AbstractArray{TW,N}, K::
         A = IndependentStatistic(T, NTuple{N,Int}(sz), TW, K)
         #foreach((y, z) -> push!(A, reshape(y, sz...), reshape(z, sz...)), zip(eachslice(x; dims=dims), eachslice(w; dims=dims)))
         for (y, z) ∈ zip(eachslice(x; dims=dims), eachslice(w; dims=dims))
-            _push!(A, reshape(y, sz...), reshape(z, sz...))
+            push!(A, reshape(y, sz...), reshape(z, sz...))
         end
     end
     return A
@@ -131,7 +131,7 @@ function IndependentStatistic(x::AbstractArray{T,N}, K::Int; dims=nothing) where
         sz = vcat(size(x)...)
         sz[vcat(dims...)] .= 1
         A = IndependentStatistic(T, NTuple{N,Int}(sz), K)
-        foreach(y -> _push!(A, reshape(y, sz...), 1), eachslice(x; dims=dims))
+        foreach(y -> push!(A, reshape(y, sz...), 1), eachslice(x; dims=dims))
     end
     return A
 end
@@ -197,7 +197,7 @@ function Base.push!(A::IndependentStatistic{T,N,K,W}, x::AbstractArray{T,N2}, w:
     slc = NTuple{sum(singleton),Int}((1:N2)[singleton])
 
     for (y, z) ∈ zip(eachslice(x; dims=slc, drop=(length(sgltidx) == length(szA))), eachslice(w; dims=slc, drop=(length(sgltidx) == length(szA))))
-        _push!(A, reshape(y, szA...), reshape(z, szA...))
+        push!(A, reshape(y, szA...), reshape(z, szA...))
     end
     return A
 end
