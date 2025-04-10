@@ -106,7 +106,7 @@ function IndependentStatistic(x::AbstractArray{T,N}, w::AbstractArray{TW,N}, K::
     size(x) == size(w) || throw(ArgumentError("IndependentStatistic : size(x) != size(w)"))
     if dims === nothing
         A = IndependentStatistic(T, size(x), TW, K)
-        push!(A, x, w)
+        _push!(A, x, w)
     else
         maximum(dims) ≤ N || throw(ArgumentError("IndependentStatistic : $(maximum(dims)) > $N"))
         sz = vcat(size(x)...)
@@ -114,7 +114,7 @@ function IndependentStatistic(x::AbstractArray{T,N}, w::AbstractArray{TW,N}, K::
         A = IndependentStatistic(T, NTuple{N,Int}(sz), TW, K)
         #foreach((y, z) -> push!(A, reshape(y, sz...), reshape(z, sz...)), zip(eachslice(x; dims=dims), eachslice(w; dims=dims)))
         for (y, z) ∈ zip(eachslice(x; dims=dims), eachslice(w; dims=dims))
-            push!(A, reshape(y, sz...), reshape(z, sz...))
+            _push!(A, reshape(y, sz...), reshape(z, sz...))
         end
     end
     return A
@@ -125,13 +125,13 @@ end
 function IndependentStatistic(x::AbstractArray{T,N}, K::Int; dims=nothing) where {T,N}
     if dims === nothing
         A = IndependentStatistic(T, size(x), K)
-        push!(A, x, 1)
+        _push!(A, x)
     else
         maximum(dims) ≥ N || throw(ArgumentError("IndependentStatistic : $(maximum(dims)) > $N"))
         sz = vcat(size(x)...)
         sz[vcat(dims...)] .= 1
         A = IndependentStatistic(T, NTuple{N,Int}(sz), K)
-        foreach(y -> push!(A, reshape(y, sz...), 1), eachslice(x; dims=dims))
+        foreach(y -> _push!(A, reshape(y, sz...), 1), eachslice(x; dims=dims))
     end
     return A
 end
@@ -182,9 +182,11 @@ end
 #Base.push!(A::IndependentStatistic, x) = push!(A, x, 1)
 Base.push!(A::IndependentStatistic{T}, x::AbstractArray{T2}, w) where {T,T2} = push!(A, T.(x), w)
 
-function Base.push!(A::IndependentStatistic{T,N,K,W}, x::AbstractArray{T,N2}, w::AbstractArray{<:Real,N2}) where {T,N,N2,K,W}
+function Base.push!(A::IndependentStatistic{T,N,K}, x::AbstractArray{T,N2}, w::W) where {T,N,N2,K,W<:Union{Real,AbstractArray{<:Real,N2}}}
     N2 ≥ N || throw(ArgumentError("push! : N2 < N :  $N2 < $N; $(size(x)) and $(size(A))"))
-    size(x) == size(w) || throw(ArgumentError("IndependentStatistic : size(x) != size(w)"))
+    if W <: AbstractArray
+        size(x) == size(w) || throw(ArgumentError("IndependentStatistic : size(x) != size(w)"))
+    end
 
     szx = vcat(size(x)...)
     szA = vcat(size(A)...)
@@ -197,28 +199,30 @@ function Base.push!(A::IndependentStatistic{T,N,K,W}, x::AbstractArray{T,N2}, w:
     slc = NTuple{sum(singleton),Int}((1:N2)[singleton])
 
     for (y, z) ∈ zip(eachslice(x; dims=slc, drop=(length(sgltidx) == length(szA))), eachslice(w; dims=slc, drop=(length(sgltidx) == length(szA))))
-        push!(A, reshape(y, szA...), reshape(z, szA...))
+        _push!(A, reshape(y, szA...), reshape(z, szA...))
     end
     return A
 end
+
+#= 
 
 function Base.push!(A::IndependentStatistic{T,N}, x::AbstractArray{T,N2}, w::Real) where {T,N,N2}
-    N2 ≥ N || throw(ArgumentError("push! : N2 < N"))
+   N2 ≥ N || throw(ArgumentError("push! : N2 < N"))
 
-    szx = vcat(size(x)...)
-    szA = vcat(size(A)...)
+   szx = vcat(size(x)...)
+   szA = vcat(size(A)...)
 
-    sgltidx = findall(szA .!= 1)
-    singleton = trues(N2)
-    singleton[sgltidx] .= false
+   sgltidx = findall(szA .!= 1)
+   singleton = trues(N2)
+   singleton[sgltidx] .= false
 
-    szA[sgltidx] == szx[sgltidx] || throw(DimensionMismatch("push! : size(A) incompatible with size(x)"))
-    slc = NTuple{sum(singleton),Int}((1:N2)[singleton])
-    for y ∈ eachslice(x; dims=slc, drop=(length(sgltidx) == length(szA)))
-        push!(A, reshape(y, szA...), w)
-    end
-    return A
-end
+   szA[sgltidx] == szx[sgltidx] || throw(DimensionMismatch("push! : size(A) incompatible with size(x)"))
+   slc = NTuple{sum(singleton),Int}((1:N2)[singleton])
+   for y ∈ eachslice(x; dims=slc, drop=(length(sgltidx) == length(szA)))
+       push!(A, reshape(y, szA...), w)
+   end
+   return A
+end =#
 
 function Base.push!(A::IndependentStatistic{T,N}, x::AbstractArray{T,N2}) where {T,N,N2}
     N2 ≥ N || throw(ArgumentError("push! : N2 < N"))
@@ -233,7 +237,7 @@ function Base.push!(A::IndependentStatistic{T,N}, x::AbstractArray{T,N2}) where 
     szA[sgltidx] == szx[sgltidx] || throw(DimensionMismatch("push! : size(A) incompatible with size(x)"))
     slc = NTuple{sum(singleton),Int}((1:N2)[singleton])
     for y ∈ eachslice(x; dims=slc, drop=(length(sgltidx) == length(szA)))
-        push!(A, reshape(y, szA...))
+        _push!(A, reshape(y, szA...))
     end
     return A
 end
@@ -248,14 +252,14 @@ end
 @inline increment_weights!(A::IndependentStatistic, x) = increment!(weights(A), x)
 #= NOT WEIGHTED DATA =#
 
-function Base.push!(A::IndependentStatistic{T,D,1}, b::AbstractArray{T,D}) where {T<:Number,D}
+function _push!(A::IndependentStatistic{T,D,1}, b::AbstractArray{T,D}) where {T<:Number,D}
     iN = inv.(increment_weights!(A, 1))
     @. $get_rawmoments(A, 1) += iN * (b - $get_rawmoments(A, 1))
     return A
 end
 
 
-function Base.push!(A::IndependentStatistic{T,D,2}, b::AbstractArray{T,D}) where {T<:Number,D}
+function _push!(A::IndependentStatistic{T,D,2}, b::AbstractArray{T,D}) where {T<:Number,D}
     wa = copy(weights(A))
     iN = inv.(increment_weights!(A, 1))
     δBA = @. (b - $get_rawmoments(A, 1))
@@ -265,7 +269,7 @@ function Base.push!(A::IndependentStatistic{T,D,2}, b::AbstractArray{T,D}) where
 end
 
 
-@generated function Base.push!(A::IndependentStatistic{T,D,P}, b::AbstractArray{T,D}) where {D,P,T<:Number}
+@generated function _push!(A::IndependentStatistic{T,D,P}, b::AbstractArray{T,D}) where {D,P,T<:Number}
     code = Expr(:block)
     push!(code.args, quote
         wa = copy(weights(A))
@@ -291,7 +295,7 @@ end
 
 
 
-@generated function Base.push!(A::IndependentStatistic{T,D,P}, b::AbstractArray{T,D}, wb::W) where {P,D,T<:Number,W<:Union{Real,AbstractArray{<:Number,D}}}
+@generated function _push!(A::IndependentStatistic{T,D,P}, b::AbstractArray{T,D}, wb::W) where {P,D,T<:Real,W<:Union{Real,AbstractArray{<:Real,D}}}
     code = Expr(:block)
     push!(code.args, quote
         wa = copy(weights(A))
