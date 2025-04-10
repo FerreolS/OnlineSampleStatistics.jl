@@ -20,15 +20,16 @@ push!(A, 4.0)  # Add a new data point
 
 mutable struct UnivariateStatistic{T,K,I} <: OnlineStatsBase.OnlineStat{T}
     weights::I
-    rawmoments::Vector{T}
+    #rawmoments::Vector{T}
+    rawmoments::NTuple{K,T}
     function UnivariateStatistic{T,K,I}(weights::I, rawmoments::Vector{T}) where {T,K,I}
         K == length(rawmoments) || throw(ArgumentError("The length of rawmoments $(length(rawmoments)) must be equal to $K"))
         nonnegative(weights) || throw(ArgumentError("weights can't be negative"))
-        new{T,K,I}(weights, rawmoments)
+        new{T,K,I}(weights, tuple(rawmoments...))
     end
     function UnivariateStatistic{T,K,I}(weights::I, rawmoments::NTuple{K,T}) where {T,K,I}
         nonnegative(weights) || throw(ArgumentError("weights can't be negative"))
-        new{T,K,I}(weights, vcat(rawmoments...))
+        new{T,K,I}(weights, rawmoments)
     end
 
 end
@@ -76,7 +77,8 @@ function UnivariateStatistic(weights::I, rawmoments::Vector{T}) where {T,I}
     UnivariateStatistic{T,K,I}(weights, rawmoments)
 end
 
-UnivariateStatistic{T,K,I}(weights::I, rawmoments...) where {T,K,I} = UnivariateStatistic{T,K,I}(weights, vcat(rawmoments...))
+#UnivariateStatistic{T,K,I}(weights::I, rawmoments...) where {T,K,I} = UnivariateStatistic{T,K,I}(weights, vcat(rawmoments...))
+UnivariateStatistic{T,K,I}(weights::I, rawmoments...) where {T,K,I} = UnivariateStatistic{T,K,I}(weights, rawmoments)
 
 UnivariateStatistic(x::T, K::Int) where {T<:AbstractFloat} = UnivariateStatistic(x, 1, K)
 UnivariateStatistic(x::T, K::Int) where {T<:Number} = UnivariateStatistic(Float64(x), 1, K)
@@ -233,7 +235,7 @@ function Base.push!(A::UnivariateStatistic{T}, y::AbstractArray{T2}) where {T,T2
     return A
 end
 
-Base.push!(A::UnivariateStatistic{T}, y::AbstractArray{T}) where {T} = foreach(x -> push!(A, x), y)
+Base.push!(A::UnivariateStatistic{T}, y::AbstractArray{T}) where {T} = @inbounds foreach(x -> push!(A, x), y)
 
 function Base.push!(A::UnivariateStatistic{T}, y::AbstractArray{T2}, w) where {T,T2}
     T == eltype(y) || promote_type(T, eltype(y)) == T || throw(ArgumentError("The input for $(typeof(A)) is $T. Found $T2."))
@@ -270,7 +272,7 @@ end
 
 function Base.push!(A::UnivariateStatistic{T,1}, b::T) where {T<:Number}
     μA, = A.rawmoments
-    A.rawmoments[1] += inv(A.weights += 1) * (b - μA)
+    A.rawmoments = A.rawmoments .+ (inv(A.weights += 1) * (b - μA))
     return A
 end
 
@@ -278,17 +280,17 @@ end
 function Base.push!(A::UnivariateStatistic{T,2}, b::T) where {T<:Number}
     NA = weights(A)
     iN = inv(increment_weights!(A, 1))
-    μA, = A.rawmoments
+    μA, Ma = A.rawmoments
 
     δBA = (b - μA)
-    A.rawmoments[1] += iN * δBA
-    A.rawmoments[2] += iN * NA * abs2(δBA)
+    A.rawmoments = (μA + iN * δBA, Ma + iN * NA * abs2(δBA))
     return A
 end
 
 
 @generated function Base.push!(A::UnivariateStatistic{T,P,Int}, b::T) where {P,T<:Number}
     code = Expr(:block)
+    moments_tpl = Expr(:tuple, zeros(T, P)...)
     push!(code.args, quote
         NA = weights(A)
         N = NA + 1
@@ -297,15 +299,14 @@ end
         δBA = (b - μA)
     end)
     for p in P:-1:3
-        push!(code.args, :(A.rawmoments[$p] += (NA * (-iN)^$p + (NA * iN)^$p) * δBA^$p))
+        moments_tpl.args[p] = :(A.rawmoments[$p] + (NA * (-iN)^$p + (NA * iN)^$p) * δBA^$p)
         for k in 1:(p-2)
-            push!(code.args, :(A.rawmoments[$p] += binomial($p, $k) * (A.rawmoments[$p-$k] * (-δBA * iN)^$k)))
+            moments_tpl.args[p] = :($(moments_tpl.args[p]) + binomial($p, $k) * (A.rawmoments[$p-$k] * (-δBA * iN)^$k))
         end
     end
-    push!(code.args, quote
-        A.rawmoments[1] += iN * δBA
-        A.rawmoments[2] += iN * NA * δBA^2
-    end)
+    moments_tpl.args[1] = :(A.rawmoments[1] + iN * δBA)
+    moments_tpl.args[2] = :(A.rawmoments[2] + iN * NA * δBA^2)
+    push!(code.args, :(A.rawmoments = $moments_tpl))
     push!(code.args, :(return A))
     return code
 end
@@ -315,7 +316,7 @@ end
 
 function Base.push!(A::UnivariateStatistic{T,1}, b::T, w::Real) where {T<:Number}
     w == 0 && return A
-    A.rawmoments[1] += w * inv(increment_weights!(A, w)) * (b - A.rawmoments[1])
+    A.rawmoments = A.rawmoments .+ (w * inv(increment_weights!(A, w)) * (b - A.rawmoments[1]))
     return A
 end
 
@@ -329,35 +330,41 @@ function Base.push!(A::UnivariateStatistic{T,2}, b::T, wb::Real) where {T<:Numbe
     BoN = -wb * iN * δBA
     AoN = wa * iN * δBA
 
-    A.rawmoments[1] -= BoN
-    A.rawmoments[2] += wa * abs2(BoN) + wb * abs2(AoN)
-
+    #  A.rawmoments[1] -= BoN
+    #  A.rawmoments[2] += wa * abs2(BoN) + wb * abs2(AoN)
+    A.rawmoments = A.rawmoments .+ (-BoN, wa * abs2(BoN) + wb * abs2(AoN))
     return A
 end
 
 @generated function Base.push!(A::UnivariateStatistic{T,P}, b::T, wb::Real) where {P,T<:Number}
     code = Expr(:block)
+    moments_tpl = Expr(:tuple, zeros(T, P)...)
     push!(code.args, quote
         wb == 0 && return A
         wa = weights(A)
         iN = inv(increment_weights!(A, wb))
         δBA = (b - A.rawmoments[1])
         BoN = -wb * iN * δBA
-        A.rawmoments[1] -= BoN
+    end)
+    moments_tpl.args[1] = :(A.rawmoments[1] - BoN)
+    push!(code.args, quote
         if P == 1
+            A.rawmoments = $moments_tpl
             return A
         end
         AoN = wa * iN * δBA
     end)
     for p in P:-1:3
-        push!(code.args, :(A.rawmoments[$p] += wa * BoN^$p + wb * AoN^$p))
+        moments_tpl.args[p] = :(A.rawmoments[$p] + wa * BoN^$p + wb * AoN^$p)
         for k in 1:(p-2)
-            push!(code.args, :(A.rawmoments[$p] += binomial($p, $k) * (A.rawmoments[$p-$k] * BoN^$k)))
+            #   push!(code.args, :(A.rawmoments[$p] += binomial($p, $k) * (A.rawmoments[$p-$k] * BoN^$k)))
+            moments_tpl.args[p] = :($(moments_tpl.args[p]) + binomial($p, $k) * A.rawmoments[$p-$k] * BoN^$k)
+
         end
     end
-    push!(code.args, quote
-        A.rawmoments[2] += wa * abs2(BoN) + wb * abs2(AoN)
-    end)
+
+    moments_tpl.args[2] = :(A.rawmoments[2] + wa * abs2(BoN) + wb * abs2(AoN))
+    push!(code.args, :(@inbouds A.rawmoments = $moments_tpl))
     push!(code.args, :(return A))
     return code
 end
