@@ -18,18 +18,19 @@ push!(A, 4.0)  # Add a new data point
 ```
 """
 
-mutable struct UnivariateStatistic{T,K,I} <: OnlineStatsBase.OnlineStat{T}
+mutable struct UnivariateStatistic{T,K,I,R} <: OnlineStatsBase.OnlineStat{T}
     weights::I
     #rawmoments::Vector{T}
-    rawmoments::NTuple{K,T}
+    rawmoments::R
     function UnivariateStatistic{T,K,I}(weights::I, rawmoments::Vector{T}) where {T,K,I}
         K == length(rawmoments) || throw(ArgumentError("The length of rawmoments $(length(rawmoments)) must be equal to $K"))
         nonnegative(weights) || throw(ArgumentError("weights can't be negative"))
-        new{T,K,I}(weights, tuple(rawmoments...))
+        r = tuple(rawmoments...)
+        new{T,K,I,typeof(r)}(weights, r)
     end
     function UnivariateStatistic{T,K,I}(weights::I, rawmoments::NTuple{K,T}) where {T,K,I}
         nonnegative(weights) || throw(ArgumentError("weights can't be negative"))
-        new{T,K,I}(weights, rawmoments)
+        new{T,K,I,typeof(rawmoments)}(weights, rawmoments)
     end
 
 end

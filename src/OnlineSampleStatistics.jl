@@ -13,5 +13,5 @@ export UnivariateStatistic,
 
 include("UnivariateStatistics.jl")
 include("IndependantStatistics.jl")
-
+include("test.jl")
 end
