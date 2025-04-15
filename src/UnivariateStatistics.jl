@@ -18,17 +18,18 @@ push!(A, 4.0)  # Add a new data point
 ```
 """
 
-mutable struct UnivariateStatistic{T,K,I} <: OnlineStatsBase.OnlineStat{T}
+mutable struct UnivariateStatistic{T,K,I,R} <: OnlineStatsBase.OnlineStat{T}
     weights::I
-    rawmoments::Vector{T}
+    rawmoments::R
     function UnivariateStatistic{T,K,I}(weights::I, rawmoments::Vector{T}) where {T,K,I}
         K == length(rawmoments) || throw(ArgumentError("The length of rawmoments $(length(rawmoments)) must be equal to $K"))
         nonnegative(weights) || throw(ArgumentError("weights can't be negative"))
-        new{T,K,I}(weights, rawmoments)
+        new{T,K,I,typeof(rawmoments)}(weights, rawmoments)
     end
     function UnivariateStatistic{T,K,I}(weights::I, rawmoments::NTuple{K,T}) where {T,K,I}
         nonnegative(weights) || throw(ArgumentError("weights can't be negative"))
-        new{T,K,I}(weights, vcat(rawmoments...))
+        r = vcat(rawmoments...)
+        new{T,K,I,typeof(r)}(weights, r)
     end
 
 end
@@ -76,7 +77,8 @@ function UnivariateStatistic(weights::I, rawmoments::Vector{T}) where {T,I}
     UnivariateStatistic{T,K,I}(weights, rawmoments)
 end
 
-UnivariateStatistic{T,K,I}(weights::I, rawmoments...) where {T,K,I} = UnivariateStatistic{T,K,I}(weights, vcat(rawmoments...))
+UnivariateStatistic{T,K,I}(weights::I, rawmoments...) where {T,K,I} = UnivariateStatistic{T,K,I}(weights, rawmoments)
+#UnivariateStatistic{T,K,I}(weights::I, rawmoments...) where {T,K,I} = UnivariateStatistic{T,K,I}(weights, vcat(rawmoments...))
 
 UnivariateStatistic(x::T, K::Int) where {T<:AbstractFloat} = UnivariateStatistic(x, 1, K)
 UnivariateStatistic(x::T, K::Int) where {T<:Number} = UnivariateStatistic(Float64(x), 1, K)
@@ -133,7 +135,7 @@ nonnegative(x) = x ≥ 0
 nonnegative(x::AbstractArray) = all(x .>= 0)
 
 Base.zero(::T) where {T<:UnivariateStatistic} = zero(T)
-Base.zero(::Type{UnivariateStatistic{T,K,I}}) where {T,K,I} = UnivariateStatistic(zero(I), zeros(T, K))
+Base.zero(::Type{UnivariateStatistic{T,K,I,L}}) where {T,K,I,L} = UnivariateStatistic(zero(I), zeros(T, K))
 Base.eltype(::UnivariateStatistic{T}) where {T} = T
 
 Base.:(==)(A::UnivariateStatistic{T,K,I}, B::UnivariateStatistic{T,K,I}) where {T,K,I} = A.rawmoments == B.rawmoments && A.weights == B.weights

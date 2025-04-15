@@ -1,4 +1,4 @@
-using ZippedArrays, StructuredArrays
+using ZippedArrays, StructuredArrays, StaticArrays
 #= getters on AbstractArrays that are not  IndependentStatistic =#
 """
     get_rawmoments(x::AbstractArray{UnivariateStatistic})
@@ -127,7 +127,7 @@ function IndependentStatistic(x::AbstractArray{T,N}, K::Int; dims=nothing) where
         A = IndependentStatistic(T, size(x), K)
         _push!(A, x)
     else
-        maximum(dims) ≥ N || throw(ArgumentError("IndependentStatistic : $(maximum(dims)) > $N"))
+        maximum(dims) ≤ N || throw(ArgumentError("IndependentStatistic : $(maximum(dims)) > $N"))
         sz = vcat(size(x)...)
         sz[vcat(dims...)] .= 1
         A = IndependentStatistic(T, NTuple{N,Int}(sz), K)
@@ -141,7 +141,7 @@ end
 
 get_rawmoments(x::IndependentStatistic{T,N,K,I}) where {T,N,K,I} = @inbounds x.args[2:K+1]
 weights(x::IndependentStatistic) = @inbounds x.args[1]
-get_rawmoments(x::IndependentStatistic, k::Int) = @inbounds x.args[1+k]
+get_rawmoments(x::IndependentStatistic{T,N,K,I}, k::Int) where {T,N,K,I} = @inbounds x.args[2:K+1][k]
 order(::IndependentStatistic{T,N,K}) where {T,N,K} = K
 
 #= statistic functions =#
@@ -149,13 +149,13 @@ StatsBase.nobs(x::IndependentStatistic) = @inbounds x.args[1]
 
 Statistics.mean(A::IndependentStatistic) = get_rawmoments(A, 1)
 
-function Statistics.var(A::IndependentStatistic{T,N,K}; corrected=true) where {T,N,K}
+function Statistics.var(A::IndependentStatistic{T,N,K,I}; corrected=true) where {T,N,K,I}
     2 ≤ K || throw(ArgumentError("second moment is not available for type $(typeof(A))"))
     W = nobs(A)
     if corrected
-        return @. get_rawmoments(A, 2) / (W - 1)
+        return get_rawmoments(A, 2) ./ (W .- 1)
     else
-        return @. get_rawmoments(A, 2) / W
+        return get_rawmoments(A, 2) ./ W
     end
 end
 
@@ -182,24 +182,41 @@ end
 #Base.push!(A::IndependentStatistic, x) = push!(A, x, 1)
 Base.push!(A::IndependentStatistic{T}, x::AbstractArray{T2}, w) where {T,T2} = push!(A, T.(x), w)
 
-function Base.push!(A::IndependentStatistic{T,N,K}, x::AbstractArray{T,N2}, w::W) where {T,N,N2,K,W<:Union{Real,AbstractArray{<:Real,N2}}}
-    N2 ≥ N || throw(ArgumentError("push! : N2 < N :  $N2 < $N; $(size(x)) and $(size(A))"))
+function Base.push!(A::IndependentStatistic{T,N}, x::AbstractArray{T,N2}, w::W) where {T,N,N2,W<:Union{Real,AbstractArray{<:Real,N2}}}
+    N2 ≥ N || throw(ArgumentError("push! : N2 < N"))
     if W <: AbstractArray
         size(x) == size(w) || throw(ArgumentError("IndependentStatistic : size(x) != size(w)"))
     end
 
-    szx = vcat(size(x)...)
-    szA = vcat(size(A)...)
+    dims = NTuple{N2 - N,Int}((ndims(A)+1):ndims(x))
+    for y ∈ zip(eachslice(x; dims=dims), eachslice(w; dims=dims))
+        _push!(A, reshape(y, size(A)), reshape(z, size(A)))
+    end
+    return A
+end
+
+function Base.push!(A::IndependentStatistic{T,N,K}, x::AbstractArray{T,N}, w::W) where {T,N,K,W<:Union{Real,AbstractArray{<:Real,N}}}
+    if W <: AbstractArray
+        size(x) == size(w) || throw(ArgumentError("IndependentStatistic : size(x) != size(w)"))
+    end
+    szx = SVector{N,Int}(size(x)...)
+    szA = SVector{N,Int}(size(A)...)
 
     sgltidx = findall(szA .!= 1)
-    singleton = trues(N2)
+    singleton = ones(MVector{N,Bool})
     singleton[sgltidx] .= false
 
     szA[sgltidx] == szx[sgltidx] || throw(DimensionMismatch("push! : size(A) incompatible with size(x)"))
-    slc = NTuple{sum(singleton),Int}((1:N2)[singleton])
+    slc = NTuple{sum(singleton),Int}((1:N)[singleton])
+    if W <: AbstractArray
+        for (y, z) ∈ zip(eachslice(x; dims=slc), eachslice(w; dims=slc))
+            _push!(A, reshape(y, szA...), reshape(z, szA...))
+        end
+    else
 
-    for (y, z) ∈ zip(eachslice(x; dims=slc, drop=(length(sgltidx) == length(szA))), eachslice(w; dims=slc, drop=(length(sgltidx) == length(szA))))
-        _push!(A, reshape(y, szA...), reshape(z, szA...))
+        for y ∈ eachslice(x; dims=slc)
+            _push!(A, reshape(y, szA...), w)
+        end
     end
     return A
 end
@@ -226,23 +243,30 @@ end =#
 
 function Base.push!(A::IndependentStatistic{T,N}, x::AbstractArray{T,N2}) where {T,N,N2}
     N2 ≥ N || throw(ArgumentError("push! : N2 < N"))
-
-    szx = vcat(size(x)...)
-    szA = vcat(size(A)...)
-
-    sgltidx = findall(szA .!= 1)
-    singleton = trues(N2)
-    singleton[sgltidx] .= false
-
-    szA[sgltidx] == szx[sgltidx] || throw(DimensionMismatch("push! : size(A) incompatible with size(x)"))
-    slc = NTuple{sum(singleton),Int}((1:N2)[singleton])
-    for y ∈ eachslice(x; dims=slc, drop=(length(sgltidx) == length(szA)))
-        _push!(A, reshape(y, szA...))
+    dims = NTuple{N2 - N,Int}((ndims(A)+1):ndims(x))
+    for y ∈ eachslice(x; dims=dims)
+        _push!(A, reshape(y, size(A)))
     end
     return A
 end
 
+function Base.push!(A::IndependentStatistic{T,N}, x::AbstractArray{T,N}) where {T,N}
+    size(A) == size(x) && return _push!(A, x)
 
+    szx = SVector{N,Int}(size(x)...)
+    szA = SVector{N,Int}(size(A)...)
+
+    sgltidx = findall(szA .!= 1)
+    singleton = ones(MVector{N,Bool})
+    singleton[sgltidx] .= false
+
+    szA[sgltidx] == szx[sgltidx] || throw(DimensionMismatch("push! : size(A) incompatible with size(x)"))
+    slc = NTuple{sum(singleton),Int}((1:N)[singleton])
+    for y ∈ eachslice(x; dims=slc)
+        _push!(A, reshape(y, szA...))
+    end
+    return A
+end
 
 @inline function increment!(A::MutableUniformArray, x::Real)
     StructuredArrays.setvalue!(A, StructuredArrays.value(A) + x)
@@ -253,18 +277,58 @@ end
 #= NOT WEIGHTED DATA =#
 
 function _push!(A::IndependentStatistic{T,D,1}, b::AbstractArray{T,D}) where {T<:Number,D}
-    iN = inv.(increment_weights!(A, 1))
-    @. $get_rawmoments(A, 1) += iN * (b - $get_rawmoments(A, 1))
+    wa = weights(A)
+    m1 = get_rawmoments(A, 1)
+    if wa isa MutableUniformArray
+        iN = inv.(increment_weights!(A, T(1)))
+        @inbounds @simd for i in eachindex(m1, b)
+            δBA = (b[i] - m1[i])
+            m1[i] += iN[i] * δBA
+        end
+    else
+        @inbounds @simd for i in eachindex(m1, b)
+            wa[i] += T(1)
+            δBA = (b[i] - m1[i])
+            m1[i] += inv(wa[i]) * δBA
+        end
+    end
+
     return A
 end
 
 
+#= 
 function _push!(A::IndependentStatistic{T,D,2}, b::AbstractArray{T,D}) where {T<:Number,D}
     wa = copy(weights(A))
     iN = inv.(increment_weights!(A, 1))
     δBA = @. (b - $get_rawmoments(A, 1))
     @. $get_rawmoments(A, 1) += iN * δBA
     @. $get_rawmoments(A, 2) += iN * wa * abs2(δBA)
+    return A
+end =#
+
+function _push!(A::IndependentStatistic{T,D,2}, b::AbstractArray{T,D}) where {T<:Number,D}
+    wa = weights(A)
+    m1 = get_rawmoments(A, 1)
+    m2 = get_rawmoments(A, 2)
+    if wa isa MutableUniformArray
+        wa = copy(wa)
+        iN = inv.(increment_weights!(A, T(1)))
+        @inbounds @simd for i in eachindex(m1, m2, b)
+            δBA = (b[i] - m1[i])
+            m1[i] += iN[i] * δBA
+            m2[i] += iN[i] * wa[i] * abs2(δBA)
+        end
+    else
+        @inbounds @simd for i in eachindex(m1, m2, b)
+            δBA = (b[i] - m1[i])
+            wa[i] += 1
+            iN = inv(wa[i])
+            m1[i] += iN * δBA
+            m2[i] += iN * wa[i] * abs2(δBA)
+
+        end
+    end
     return A
 end
 
@@ -293,8 +357,180 @@ end
     return code
 end
 
+#=  WEIGHTED DATA =#
+
+function _push!(A::IndependentStatistic{T,D,1}, b::AbstractArray{T,D}, wb::W) where {D,T<:Real,W<:Union{Real,AbstractArray{<:Real,D}}}
+
+    wa = weights(A)
+    m1 = get_rawmoments(A, 1)
+
+    if wa isa MutableUniformArray
+        W == Real || throw(ArgumentError("MutableUniformArray not supported for non scalar weights"))
+        iN = inv.(increment_weights!(A, wb))
+
+        @inbounds @simd for i in eachindex(m1, b)
+            δBA = (b[i] - m1[i])
+            m1[i] += iN[i] * δBA * wb
+        end
+    else
+        if W == Real
+            @inbounds @simd for i in eachindex(m1, b)
+                wa[i] += wb
+                δBA = (b[i] - m1[i])
+                m1[i] += inv(wa[i]) * δBA * wb
+            end
+        else
+            @inbounds @simd for i in eachindex(m1, b, wb)
+                wa[i] += wb[i]
+                δBA = (b[i] - m1[i])
+                m1[i] += inv(wa[i]) * δBA * wb[i]
+            end
+        end
+    end
+    return A
+end
+
+#= 
+
+function _push!(A::IndependentStatistic{T,D,2}, b::AbstractArray{T,D}, wb::AbstractArray{<:Real,D}) where {D,T<:Real}
+    wa = weights(A)
+    m1 = get_rawmoments(A, 1)
+    m2 = get_rawmoments(A, 2)
+    if wa isa MutableUniformArray
+        throw(ArgumentError("MutableUniformArray not supported for weighted data"))
+    else
+        @inbounds @simd for i in eachindex(m1, m2, b, wb)
+            δBA = (b[i] - m1[i])
+            iN = inv(wa[i] + wb[i])
+            m1[i] += iN * δBA
+            m2[i] += iN * wa[i] * abs2(δBA)
+            wa[i] += wb[i]
+        end
+    end
+    return A
+end
 
 
+
+@generated function _push!(A::I, b::AbstractArray{T,D}, wb::Real) where {P,D,T<:Real,I<:IndependentStatistic{T,D,P}}
+    code = Expr(:block)
+    push!(code.args, quote
+        P < 2 && throw(ArgumentError("P must be greater than 2"))
+        wb < 0 && throw(ArgumentError("weights can't be negative"))
+        wb == 0 && return A
+        wa = weights(A)
+        m1 = get_rawmoments(A, 1)
+    end)
+    if I.parameters[5].parameters[1] <: MutableUniformArray
+        push!(code.args, quote
+            wa = first(wa)
+            iN = inv.(first(increment_weights!(A, wb)))
+            @inbounds @simd for i in eachindex(m1, b)
+                δBA = (b[i] - m1[i])
+                BoN = -wb * iN * δBA
+                m1[i] -= BoN
+                AoN = wa * iN * δBA
+                $(Plargerthan22(P))
+                get_rawmoments(A, 2)[i] += wa * abs2(BoN) + wb * abs2(AoN)
+            end
+            return A
+        end)
+    else
+        push!(code.args, quote
+            @inbounds @simd for i in eachindex(m1, b)
+                iN = ifelse(wb == 0, 0, inv(wa[i] + wb))
+                δBA = (b[i] - m1[i])
+                BoN = -wb * iN * δBA
+                m1[i] -= BoN
+                AoN = wa[i] * iN * δBA
+                $(Plargerthan22(P))
+                get_rawmoments(A, 2)[i] += wa[i] * abs2(BoN) + wb * abs2(AoN)
+                wa[i] += wb
+            end
+            return A
+        end)
+    end
+    return code
+end =#
+
+@generated function _push!(A::I, b::AbstractArray{T,D}, wb::W) where {P,D,T<:Real,I<:IndependentStatistic{T,D,P},W<:Union{Real,AbstractArray{<:Real,D}}}
+    code = Expr(:block)
+    if W == Real
+        push!(code.args, quote
+            wb < 0 && throw(ArgumentError("weights can't be negative"))
+            wb == 0 && return A
+        end)
+        WBI = :(wb)
+    else
+        WBI = :(wb[i])
+    end
+    push!(code.args, quote
+        P > 1 || throw(ArgumentError("P must be greater than 1"))
+        nonnegative(wb) || throw(ArgumentError("weights can't be negative"))
+        wb == 0 && return A
+        wa = weights(A)
+        m1 = get_rawmoments(A, 1)
+    end)
+    if I.parameters[5].parameters[1] <: MutableUniformArray
+        W == Real && push!(code.args, :(throw(ArgumentError("MutableUniformArray not supported for non scalar weights"))))
+        push!(code.args, :(MWAI = first(wa)))
+        push!(code.args, :(MNI = inv.(first(increment_weights!(A, wb)))))
+        NI = :(MNI)
+        WAI = :(wai = MWAI)
+        waupdate = :()
+    else
+        WAI = :(wai = wa[i])
+        NI = :(ifelse($WBI == 0, 0, inv(wa[i] + $WBI)))
+        waupdate = :(wa[i] += $WBI)
+    end
+    push!(code.args, quote
+        @inbounds @simd for i in eachindex(m1, b)
+            iN = $NI
+            $WAI
+            wbi = $WBI
+            δBA = (b[i] - m1[i])
+            BoN = -$WBI * iN * δBA
+            m1[i] -= BoN
+            AoN = wai * iN * δBA
+            $(Plargerthan2(P))
+            get_rawmoments(A, 2)[i] += wai * abs2(BoN) + wbi * abs2(AoN)
+            $waupdate
+        end
+        return A
+    end)
+
+    return code
+end
+
+function Plargerthan2(P::Int)
+    code = Expr(:block)
+    if P ≤ 2
+        return code
+    end
+    for p in P:-1:3
+        push!(code.args, :(get_rawmoments(A, $p)[i] += wai * BoN^$p + wbi * AoN^$p))
+        for k in 1:(p-2)
+            push!(code.args, :(get_rawmoments(A, $p)[i] += binomial($p, $k) * get_rawmoments(A, $p - $k)[i] * BoN^$k))
+        end
+    end
+    return code
+end
+
+
+function Plargerthan22(P::Int)
+    code = Expr(:block)
+    if P ≤ 2
+        return code
+    end
+    for p in P:-1:3
+        push!(code.args, :(get_rawmoments(A, $p)[i] += wa[i] * BoN^$p + wb * AoN^$p))
+        for k in 1:(p-2)
+            push!(code.args, :(get_rawmoments(A, $p)[i] += binomial($p, $k) * get_rawmoments(A, $p - $k)[i] * BoN^$k))
+        end
+    end
+    return code
+end
+#= 
 @generated function _push!(A::IndependentStatistic{T,D,P}, b::AbstractArray{T,D}, wb::W) where {P,D,T<:Real,W<:Union{Real,AbstractArray{<:Real,D}}}
     code = Expr(:block)
     push!(code.args, quote
@@ -319,5 +555,18 @@ end
         @. $get_rawmoments(A, 2) += wa * abs2(BoN) + wb * abs2(AoN)
     end)
     push!(code.args, :(return A))
+    return code
+end =#
+function toto(A::I) where {I<:IndependentStatistic}
+    code = Expr(:block)
+    if I.parameters[5].parameters[1] <: MutableUniformArray
+        push!(code.args, :(println("MutableUniformArray")))
+    else
+        push!(code.args, quote
+            println("Not MutableUniformArray")
+            wai = wa[i]
+        end)
+    end
+    push!(code.args, :(println("$(I)")))
     return code
 end
