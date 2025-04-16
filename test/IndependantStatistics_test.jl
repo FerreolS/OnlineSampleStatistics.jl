@@ -46,6 +46,9 @@ using ZippedArrays, StructuredArrays
         @test @inferred(skewness(A)) ≈ skewness.(A)
         @test @inferred(mean(A)) ≈ mean.(A)
         @test @inferred(var(A; corrected=false)) ≈ var.(A; corrected=false)
+
+        C = IndependentStatistic(data, trues(size(data)...), 5)
+        @test @inferred(mean(C)) ≈ data
     end
 
 
