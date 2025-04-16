@@ -156,6 +156,8 @@
     end
     @testset "Weighted Data with Transducers" begin
         using Transducers
+        x = randn(1_000)
+        w = rand(size(x)...)
         A = fit!(UnivariateStatistic(Float64, Float64, 4), zip(x, w))
         B = foldxt(UnivariateStatistic(Float64, Float64, 4), zip(x, w))
         @test A ≈ B

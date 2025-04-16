@@ -492,7 +492,7 @@ end =#
             BoN = -$WBI * iN * δBA
             m1[i] -= BoN
             AoN = wai * iN * δBA
-            $(Plargerthan2(P))
+            $(MomentsExpression(P))
             get_rawmoments(A, 2)[i] += wai * abs2(BoN) + wbi * abs2(AoN)
             $waupdate
         end
@@ -502,7 +502,7 @@ end =#
     return code
 end
 
-function Plargerthan2(P::Int)
+function MomentsExpression(P::Int)
     code = Expr(:block)
     if P ≤ 2
         return code
@@ -513,60 +513,5 @@ function Plargerthan2(P::Int)
             push!(code.args, :(get_rawmoments(A, $p)[i] += binomial($p, $k) * get_rawmoments(A, $p - $k)[i] * BoN^$k))
         end
     end
-    return code
-end
-
-
-function Plargerthan22(P::Int)
-    code = Expr(:block)
-    if P ≤ 2
-        return code
-    end
-    for p in P:-1:3
-        push!(code.args, :(get_rawmoments(A, $p)[i] += wa[i] * BoN^$p + wb * AoN^$p))
-        for k in 1:(p-2)
-            push!(code.args, :(get_rawmoments(A, $p)[i] += binomial($p, $k) * get_rawmoments(A, $p - $k)[i] * BoN^$k))
-        end
-    end
-    return code
-end
-#= 
-@generated function _push!(A::IndependentStatistic{T,D,P}, b::AbstractArray{T,D}, wb::W) where {P,D,T<:Real,W<:Union{Real,AbstractArray{<:Real,D}}}
-    code = Expr(:block)
-    push!(code.args, quote
-        wa = copy(weights(A))
-        iN = inv.(increment_weights!(A, wb))
-        @. iN[!isfinite(iN)] = zero(T)
-        δBA = @. (b - $get_rawmoments(A, 1))
-        BoN = @. -wb * iN * δBA
-        @. $get_rawmoments(A, 1) -= BoN
-        if P == 1
-            return A
-        end
-        AoN = @. wa * iN * δBA
-    end)
-    for p in P:-1:3
-        push!(code.args, :(@. $get_rawmoments(A, $p) += wa * BoN^$p + wb * AoN^$p))
-        for k in 1:(p-2)
-            push!(code.args, :(@. $get_rawmoments(A, $p) += binomial($p, $k) * (@. $get_rawmoments(A, $p - $k) * BoN^$k)))
-        end
-    end
-    push!(code.args, quote
-        @. $get_rawmoments(A, 2) += wa * abs2(BoN) + wb * abs2(AoN)
-    end)
-    push!(code.args, :(return A))
-    return code
-end =#
-function toto(A::I) where {I<:IndependentStatistic}
-    code = Expr(:block)
-    if I.parameters[5].parameters[1] <: MutableUniformArray
-        push!(code.args, :(println("MutableUniformArray")))
-    else
-        push!(code.args, quote
-            println("Not MutableUniformArray")
-            wai = wa[i]
-        end)
-    end
-    push!(code.args, :(println("$(I)")))
     return code
 end
