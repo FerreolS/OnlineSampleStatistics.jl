@@ -27,21 +27,23 @@ using ZippedArrays, StructuredArrays
         B = [UnivariateStatistic(d, 5) for d ∈ data]
         @test @inferred(order(B)) == 5
         @test A == B
-        @test get_rawmoments(A, 1) == get_rawmoments(B, 1)
-        @test weights(A) == weights(B)
-        @test nobs(A) == nobs(B)
-        @test mean(A) == data
+        @test @inferred(get_rawmoments(A, 1)) == @inferred(get_rawmoments(B, 1))
+        @test @inferred(get_rawmoments(A)) == @inferred(get_rawmoments(B))
+        @test @inferred(get_moments(A, 1)) == @inferred(get_moments(B, 1))
+        @test @inferred(weights(A)) == @inferred(weights(B))
+        @test @inferred(nobs(A)) == @inferred(nobs(B))
+        @test @inferred(mean(A)) == data
 
         @inferred(push!(A, -1 .* data))
         @test @inferred(var(A; corrected=false)) == data .^ 2
         @test @inferred(var(A)) == 2 .* data .^ 2
         @test @inferred(skewness(A)) == zeros(Float64, 3, 3)
         @test @inferred(kurtosis(A)) == -2.0 * ones(3, 3)
-        @test var(A) ≈ var.(A)
-        @test kurtosis(A) ≈ kurtosis.(A)
-        @test skewness(A) ≈ skewness.(A)
-        @test mean(A) ≈ mean.(A)
-        @test var(A; corrected=false) ≈ var.(A; corrected=false)
+        @test @inferred(var(A)) ≈ var.(A)
+        @test @inferred(kurtosis(A)) ≈ kurtosis.(A)
+        @test @inferred(skewness(A)) ≈ skewness.(A)
+        @test @inferred(mean(A)) ≈ mean.(A)
+        @test @inferred(var(A; corrected=false)) ≈ var.(A; corrected=false)
     end
 
 
@@ -52,8 +54,23 @@ using ZippedArrays, StructuredArrays
     end
 
     @testset "Weighted Data" begin
-        dims = 3
         x = randn(2, 3, 10)
+        A = IndependentStatistic(x, trues(size(x)...), 2)
+        B = IndependentStatistic(x, 2)
+        @test @inferred(weights(A)) == @inferred(weights(B))
+        @test @inferred(nobs(A)) == @inferred(nobs(B))
+        @test @inferred(mean(A)) == mean(B)
+
+
+        dims = 3
+        A = IndependentStatistic(x, trues(size(x)...), 2; dims=dims)
+        B = IndependentStatistic(x, 2; dims=dims)
+        @test @inferred(weights(A)) == @inferred(weights(B))
+        @test @inferred(nobs(A)) == @inferred(nobs(B))
+        @test @inferred(mean(A)) == mean(B)
+        @test @inferred(var(A, corrected=false)) == var(B, corrected=false)
+
+
         w = (rand(size(x)...) .> 0.1)
         A = IndependentStatistic(x, w, 2; dims=dims)
 

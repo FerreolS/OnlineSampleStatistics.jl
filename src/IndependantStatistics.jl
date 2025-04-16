@@ -1,7 +1,7 @@
 using ZippedArrays, StructuredArrays, StaticArrays
 #= getters on AbstractArrays that are not  IndependentStatistic =#
 """
-    get_rawmoments(x::AbstractArray{UnivariateStatistic})
+    get_rawmoments(x::AbstractArray{<:UnivariateStatistic})
 
 Retrieve the raw moments from an array of `UnivariateStatistic` objects. 
 Returns an array where each element corresponds to the raw moments of the respective `UnivariateStatistic` in `x`.
@@ -13,7 +13,9 @@ Returns an array where each element corresponds to the raw moments of the respec
 - An array of raw moments.
 
 """
-get_rawmoments(x::AbstractArray{<:UnivariateStatistic}) = map(x -> x.rawmoments, x)
+function get_rawmoments(A::AbstractArray{<:UnivariateStatistic{T,K},N}) where {T,K,N}
+    NTuple{K,Array{T,N}}([get_rawmoments(x, j) for x ∈ A] for j ∈ 1:K)
+end
 
 """
 
@@ -455,14 +457,17 @@ end =#
 
 @generated function _push!(A::I, b::AbstractArray{T,D}, wb::W) where {P,D,T<:Real,I<:IndependentStatistic{T,D,P},W<:Union{Real,AbstractArray{<:Real,D}}}
     code = Expr(:block)
-    if W == Real
+    if W <: AbstractArray
+        push!(code.args, quote
+            size(b) == size(wb) || throw(ArgumentError("IndependentStatistic : size(b) != size(wb)"))
+        end)
+        WBI = :(wb[i])
+    else
         push!(code.args, quote
             wb < 0 && throw(ArgumentError("weights can't be negative"))
             wb == 0 && return A
         end)
         WBI = :(wb)
-    else
-        WBI = :(wb[i])
     end
     push!(code.args, quote
         P > 1 || throw(ArgumentError("P must be greater than 1"))

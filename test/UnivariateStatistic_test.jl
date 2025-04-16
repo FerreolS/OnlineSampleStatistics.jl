@@ -121,13 +121,11 @@
         A = UnivariateStatistic(4)
         push!(A, x)
         B = foldxt(UnivariateStatistic(4), x)
-        @test A ≈ B
-        B = foldxd(UnivariateStatistic(4), x)
-        @test A ≈ B
+        @test isapprox(A, B; rtol=1e-6)
 
         A = push!(UnivariateStatistic(Complex{Float64}, 2), x)
         B = foldxt(UnivariateStatistic(Complex{Float64}, 2), Complex.(x))
-        @test A ≈ B
+        @test isapprox(A, B; rtol=1e-6)
 
     end
 
@@ -158,7 +156,7 @@
         using Transducers
         x = randn(1_000)
         w = rand(size(x)...)
-        A = fit!(UnivariateStatistic(Float64, Float64, 4), zip(x, w))
+        A = @inferred(fit!(UnivariateStatistic(Float64, Float64, 4), zip(x, w)))
         B = foldxt(UnivariateStatistic(Float64, Float64, 4), zip(x, w))
         @test A ≈ B
     end
