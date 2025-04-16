@@ -92,5 +92,20 @@ using ZippedArrays, StructuredArrays
         @inferred push!(A, Float32.(x), w)
         @test nobs(A) ≈ sum(w, dims=dims)
 
+        A = IndependentStatistic(Float64, size(A), Float64, 1)
+        @inferred push!(A, x, 1)
+
+        B = IndependentStatistic(Float64, size(A), 1)
+        @inferred push!(B, x, 1)
+
+        C = IndependentStatistic(Float64, size(A), Int, 1)
+        @inferred push!(C, x, trues(size(x)...))
+
+        @test @inferred(weights(A)) == @inferred(weights(B))
+        @test @inferred(nobs(A)) == @inferred(nobs(B))
+        @test @inferred(mean(A)) == mean(B)
+        @test @inferred(weights(A)) == @inferred(weights(C))
+        @test @inferred(nobs(A)) == @inferred(nobs(C))
+        @test @inferred(mean(A)) == mean(C)
     end
 end
