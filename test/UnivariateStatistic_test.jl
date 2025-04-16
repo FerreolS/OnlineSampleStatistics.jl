@@ -143,16 +143,18 @@
 
 
         A = UnivariateStatistic(Float64, Float64, 1)
-        push!(A, x, 1)
-        @test @inferred(nobs(A)) ≈ length(x)
+        push!(A, x, 2.0)
+        @test @inferred(nobs(A)) ≈ 2 * length(x)
         @test @inferred(mean(A)) ≈ mean(x)
 
         A = UnivariateStatistic(Float64, Float64, 2)
-        push!(A, Float32.(x), 1)
-        @test @inferred(nobs(A)) ≈ length(x)
-        @test @inferred(mean(A)) ≈ mean(x)
+        push!(A, Float32.(x), 2.0)
+        @test @inferred(nobs(A)) ≈ 2 * length(x)
+        @test @inferred(mean(A)) ≈ mean(Float32.(x))
         @test @inferred(var(A, corrected=false)) ≈ var(x, corrected=false)
 
+    end
+    @testset "Weighted Data with Transducers" begin
         using Transducers
         A = fit!(UnivariateStatistic(Float64, Float64, 4), zip(x, w))
         B = foldxt(UnivariateStatistic(Float64, Float64, 4), zip(x, w))
