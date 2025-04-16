@@ -1,6 +1,6 @@
 # OnlineSampleStatistics
 
-[![License][license-img]][license-url] [![Build Status][github-ci-img]][github-ci-url] [![Coverage][codecov-img]][codecov-url] [![Aqua QA][aqua-img]][aqua-url]
+[![Documentation][doc-img]][doc-url] [![Documentation][doc-img-latest]][doc-url-latest][![License][license-img]][license-url] [![Build Status][github-ci-img]][github-ci-url] [![Coverage][codecov-img]][codecov-url] [![Aqua QA][aqua-img]][aqua-url]
 
 [license-url]: ./LICENSE.md
 [license-img]: http://img.shields.io/badge/license-MIT-brightgreen.svg?style=flat
@@ -10,6 +10,10 @@
 [codecov-url]: http://codecov.io/github/FerreolS/OnlineSampleStatistics.jl?branch=master
 [aqua-img]: https://raw.githubusercontent.com/JuliaTesting/Aqua.jl/master/badge.svg
 [aqua-url]: https://github.com/JuliaTesting/Aqua.jl
+[doc-img]: https://img.shields.io/badge/docs-stable-blue.svg
+[doc-url]: https://ferreolS.github.io/OnlineStats.jl/stable
+[doc-img-latest]: https://img.shields.io/badge/docs-latest-blue.svg
+[doc-url-latest]: https://ferreolS.github.io/OnlineStats.jl/latest
 
 `OnlineSampleStatistics.jl` is a Julia package for online single pass estimation of statistical moments.
 
