@@ -11,6 +11,40 @@
 [aqua-img]: https://raw.githubusercontent.com/JuliaTesting/Aqua.jl/master/badge.svg
 [aqua-url]: https://github.com/JuliaTesting/Aqua.jl
 
+`OnlineSampleStatistics.jl` is a Julia package for online single pass estimation of statistical moments.
+
+## Features
+
+- compute any moment (mean, variance, skewness, kurtosis, etc.) in a single pass
+- numerically stable (avoids catastrophic cancellation even for non-centered data)
+- memory efficient (0 allocations)
+- fast
+- handle weighted data
+- cope with univariate and multivariate (array) data
+  
+Designed for scenarios where data arrives in a streaming fashion or when memory efficiency (0 allocations) is critical.
+
+## Usage
+
+### Univariate Statistics
+
+```julia
+using OnlineSampleStatistics
+
+# Create a univariate statistic to track up to 4 moments
+stat = UnivariateStatistic(4)
+
+# Add data incrementally
+push!(stat, 1.0)
+push!(stat, [2.0, 3.0, 4.0])
+
+# Compute statistics
+println("Mean: ", mean(stat))
+println("Variance: ", var(stat))
+println("Skewness: ", skewness(stat))
+println("Kurtosis: ", kurtosis(stat))
+```
+
 ## Comparison with [OnlineStats.jl](https://github.com/joshday/OnlineStats.jl)
 
 ### Precision
@@ -85,8 +119,8 @@ julia> kurtosis(m) , kurtosis(A), kurtosis(x)
 ```
 
 ### Performance
-Performance is similar for both packages for the first two moments. However the additional computation in `OninesSampleStatistics.jl` to ensure numerical precision for higher moments scales exponentially with the number of stored moments.
 
+Performance is similar for both packages for the first two moments. However the additional computation in `OninesSampleStatistics.jl` to ensure numerical precision for higher moments scales exponentially with the number of stored moments.
 
 #### Mean
 
