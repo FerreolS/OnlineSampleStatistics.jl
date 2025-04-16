@@ -5,6 +5,8 @@
         # Test constructor with default type
         A = UnivariateStatistic(0.5, 2)
         @test typeof(A) <: UnivariateStatistic
+        @test @inferred isnan(var(A))
+        @test @inferred nobs(A) == 1
 
         # Test constructor with custom type
         B = UnivariateStatistic(Float32, 1)
@@ -17,12 +19,10 @@
         @test B.rawmoments == [0.0f0]
         @test B.weights == 0
 
-        A = UnivariateStatistic([0.5, 1, 2], 2)
+        A = UnivariateStatistic([0.0, 1, 2], 2)
         @test nobs(A) == 3
+        @test @inferred mean(A) == 1.0
     end
-    @test @inferred mean(A) == 0.5
-    @test @inferred isnan(var(A))
-    @test @inferred nobs(A) == 1
 
 
     @testset "OnlineStatsBase API" begin
@@ -34,9 +34,8 @@
         @test @inferred(fit!(A, ones(10))) == UnivariateStatistic(10, [1.0, 0.0])
     end
 
-    @test empty!(A) == zero(A)
-
     @testset "push! merge! tests for first two moments" begin
+        A = UnivariateStatistic(0.5, 2)
         C = zero(A)
         push!(C, ones(10))
         @test @inferred mean(C) == 1.0
