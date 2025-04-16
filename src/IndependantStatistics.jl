@@ -191,7 +191,7 @@ function Base.push!(A::IndependentStatistic{T,N}, x::AbstractArray{T,N2}, w::W) 
     end
 
     dims = NTuple{N2 - N,Int}((ndims(A)+1):ndims(x))
-    for y ∈ zip(eachslice(x; dims=dims), eachslice(w; dims=dims))
+    for (y, z) ∈ zip(eachslice(x; dims=dims), eachslice(w; dims=dims))
         _push!(A, reshape(y, size(A)), reshape(z, size(A)))
     end
     return A

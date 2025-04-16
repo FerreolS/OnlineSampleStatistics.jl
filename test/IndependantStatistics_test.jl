@@ -15,10 +15,12 @@ using ZippedArrays, StructuredArrays
         @test typeof(A) <: ZippedArray
     end
 
-    # Test mean calculation
     @testset "Mean & variance Calculation" begin
         using OnlineSampleStatistics: get_rawmoments, weights, get_moments
         data = [1.0 2.0 3.0; 4.0 5.0 6.0; 7.0 8.0 9.0]
+
+        A = IndependentStatistic(data, 1)
+        @test @inferred(mean(A)) ≈ mean.(A)
 
         A = IndependentStatistic((3, 3), 5)
         push!(A, data)
@@ -77,8 +79,15 @@ using ZippedArrays, StructuredArrays
         @test mean(A) ≈ sum(w .* x; dims=dims) ./ sum(w; dims=dims)
         @test var(A; corrected=false) ≈ sum(w .* (x .- mean(A)) .^ 2; dims=dims) ./ sum(w; dims=dims)
 
+        B = IndependentStatistic(Float64, size(A)[1:2], Int, 2)
+        push!(B, x, w)
+        @test @inferred(dropdims(weights(A); dims=3)) == @inferred(weights(B))
+        @test @inferred(dropdims(nobs(A); dims=3)) == @inferred(nobs(B))
+        @test @inferred(dropdims(mean(A); dims=3)) == mean(B)
+
         A = IndependentStatistic(Float64, size(A), Float64, 1)
-        @inferred push!(A, x, w)
+        @inferred push!(A, Float32.(x), w)
         @test nobs(A) ≈ sum(w, dims=dims)
+
     end
 end
