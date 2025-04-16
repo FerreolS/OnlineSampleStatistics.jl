@@ -11,9 +11,9 @@
 [aqua-img]: https://raw.githubusercontent.com/JuliaTesting/Aqua.jl/master/badge.svg
 [aqua-url]: https://github.com/JuliaTesting/Aqua.jl
 [doc-img]: https://img.shields.io/badge/docs-stable-blue.svg
-[doc-url]: https://ferreolS.github.io/OnlineStats.jl/stable
-[doc-img-latest]: https://img.shields.io/badge/docs-latest-blue.svg
-[doc-url-latest]: https://ferreolS.github.io/OnlineStats.jl/latest
+[doc-url]: https://FerreolS.github.io/OnlineSampleStatistics.jl/stable
+<!-- [doc-img-latest]: https://img.shields.io/badge/docs-latest-blue.svg
+[doc-url-latest]: https://ferreolS.github.io/OnlineSampleStatistics.jl/latest -->
 
 `OnlineSampleStatistics.jl` is a Julia package for online single pass estimation of statistical moments.
 
