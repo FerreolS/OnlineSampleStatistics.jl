@@ -1,17 +1,30 @@
 @testset "UnivariateStatistic" begin
     # Test for the UnivariateStatistic struct
-    A = UnivariateStatistic(0.5, 2,)
-    B = UnivariateStatistic(Float32, 1)
+    @testset "UnivariateStatistic Constructors" begin
 
-    @test A == UnivariateStatistic(Float64, 0.5, 2)
-    @test A.rawmoments == [0.5, 0.0]
-    @test A.weights == 1
-    @test B.rawmoments == [0.0f0]
-    @test B.weights == 0
+        # Test constructor with default type
+        A = UnivariateStatistic(0.5, 2)
+        @test typeof(A) <: UnivariateStatistic
 
+        # Test constructor with custom type
+        B = UnivariateStatistic(Float32, 1)
+        @test typeof(B) <: UnivariateStatistic
+
+
+        @test A == UnivariateStatistic(Float64, 0.5, 2)
+        @test A.rawmoments == [0.5, 0.0]
+        @test A.weights == 1
+        @test B.rawmoments == [0.0f0]
+        @test B.weights == 0
+
+        A = UnivariateStatistic([0.5, 1, 2], 2)
+        @test nobs(A) == 3
+    end
     @test @inferred mean(A) == 0.5
     @test @inferred isnan(var(A))
     @test @inferred nobs(A) == 1
+
+
     @testset "OnlineStatsBase API" begin
         using OnlineStatsBase
 
@@ -128,6 +141,18 @@
         @test mean(A) ≈ sum(w .* x) ./ sum(w)
         @test isapprox(var(A, corrected=false), sum(w .* (x .- mean(A)) .^ 2) ./ sum(w); rtol=1e-6)
         @test_logs (:warn, "The number of samples is not an integer. The variance is not corrected.") var(A)
+
+
+        A = UnivariateStatistic(Float64, Float64, 1)
+        push!(A, x, 1)
+        @test @inferred(nobs(A)) ≈ length(x)
+        @test @inferred(mean(A)) ≈ mean(x)
+
+        A = UnivariateStatistic(Float64, Float64, 2)
+        push!(A, Float32.(x), 1)
+        @test @inferred(nobs(A)) ≈ length(x)
+        @test @inferred(mean(A)) ≈ mean(x)
+        @test @inferred(var(A, corrected=false)) ≈ var(x, corrected=false)
 
         using Transducers
         A = fit!(UnivariateStatistic(Float64, Float64, 4), zip(x, w))

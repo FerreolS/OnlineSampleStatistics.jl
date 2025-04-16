@@ -168,8 +168,8 @@ Compute the k-th moment of a UnivariateStatistic `A`.
 # Returns
 - The k-th moment of the statistic. If it is empty, the function returns `0`. 
 """
-get_moments(A::UnivariateStatistic{T,K,I}, k) where {T,K,I} = ifelse((N = weights(A)) == 0, 0, get_rawmoments(A, k) / ifelse(k == 1, 1, N))
-get_moments(A::UnivariateStatistic{T,K}) where {T,K} = [get_moments(A, k) for k in 1:K]
+get_moments(A::UnivariateStatistic{T,K,I,R}, k) where {T,K,I,R} = ifelse((N = weights(A)) == 0, T(0), get_rawmoments(A, k) / ifelse(k == 1, T(1), T(N)))
+get_moments(A::UnivariateStatistic{T,K,I,R}) where {T,K,I,R} = [get_moments(A, k) for k in 1:K]
 
 """
     Statistics.mean(A::UnivariateStatistic{T,K,I}) where {T,K,I}
@@ -178,7 +178,7 @@ Compute the mean of a UnivariateStatistic `A`
 # See also
 - `get_moments`
 """
-Statistics.mean(A::UnivariateStatistic{T,K,I}) where {T,K,I} = get_moments(A, 1)
+Statistics.mean(A::UnivariateStatistic{T,K,I,R}) where {T,K,I,R} = get_moments(A, 1)
 
 function Statistics.var(A::UnivariateStatistic{T,K,W}; corrected=true) where {T,K,W}
     N = nobs(A)
