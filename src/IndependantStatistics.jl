@@ -6,12 +6,6 @@ using ZippedArrays, StructuredArrays, StaticArrays
 Retrieve the raw moments from an array of `UnivariateStatistic` objects. 
 Returns an array where each element corresponds to the raw moments of the respective `UnivariateStatistic` in `x`.
 
-# Arguments
-- `x::AbstractArray{UnivariateStatistic}`: An array of `UnivariateStatistic` objects.
-
-# Returns
-- An array of raw moments.
-
 """
 function get_rawmoments(A::AbstractArray{<:UnivariateStatistic{T,K},N}) where {T,K,N}
     NTuple{K,Array{T,N}}([get_rawmoments(x, j) for x ∈ A] for j ∈ 1:K)
@@ -22,12 +16,6 @@ end
     weights(x::AbstractArray{UnivariateStatistic})
 
 Retrieves the weights from an array of `UnivariateStatistic` objects.
-
-# Arguments
-- `x::AbstractArray{UnivariateStatistic}`: An array of `UnivariateStatistic` objects.
-
-# Returns
-- An array of weights.
 """
 weights(x::AbstractArray{<:UnivariateStatistic}) = map(x -> x.weights, x)
 
@@ -36,13 +24,6 @@ weights(x::AbstractArray{<:UnivariateStatistic}) = map(x -> x.weights, x)
 
 Retrieve the `k`-th raw moments from an array of `UnivariateStatistic` objects. 
 Returns an array where each element corresponds to the `k`-th raw moment of the respective `UnivariateStatistic` in `x`.
-
-# Arguments
-- `x::AbstractArray{UnivariateStatistic}`: An array of `UnivariateStatistic` objects.
-- `k::Int`: The order of the raw moment to retrieve.
-
-# Returns
-- An array of `k`-th raw moments.
 
 """
 get_rawmoments(x::AbstractArray{<:UnivariateStatistic}, k::Int) = map(y -> get_rawmoments(y, k), x)
@@ -53,11 +34,6 @@ get_rawmoments(x::AbstractArray{<:UnivariateStatistic}, k::Int) = map(y -> get_r
 Retrieve the number of observations (`nobs`) from an array of `UnivariateStatistic` objects. 
 Returns an array where each element corresponds to the number of observations of the respective `UnivariateStatistic` in `x`.
 
-# Arguments
-- `x::AbstractArray{UnivariateStatistic{T,K,Int}}`: An array of `UnivariateStatistic` objects.
-
-# Returns
-- An array of the number of observations.
 """
 
 StatsBase.nobs(x::AbstractArray{<:UnivariateStatistic}) = map(x -> nobs(x), x)
@@ -68,12 +44,6 @@ StatsBase.nobs(x::AbstractArray{<:UnivariateStatistic}) = map(x -> nobs(x), x)
 Retrieve the `k`-th moments from an array of `UnivariateStatistic` objects. 
 Returns an array where each element corresponds to the `k`-th moment of the respective `UnivariateStatistic` in `x`.
 
-# Arguments
-- `x::AbstractArray{UnivariateStatistic}`: An array of `UnivariateStatistic` objects.
-- `k::Int`: The order of the moment to retrieve.
-
-# Returns
-- An array of `k`-th moments.
 """
 get_moments(x::AbstractArray{<:UnivariateStatistic}, k::Int) = map(y -> get_moments(y, k), x)
 

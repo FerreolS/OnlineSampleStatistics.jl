@@ -42,18 +42,11 @@ Constructs a `UnivariateStatistic` object of type `T` with `K` moments from a si
 The first moment (the mean) is then `x` and the remaining moments are zeros of type `T`. 
 The weight counts the number of sample set to `1`.
 
-# Arguments
-- `K::Int`: The number of moments to store.
-- `x::T`: The first sample.
-
 ---
 
     UnivariateStatistic(K::Int, T::Type)
 
 Constructs an empty `UnivariateStatistic` object of type `T` with `K` moments.
-# Arguments
-- `K::Int`: The number of moments to store.
-- `T::Type`: The type of the elements in the moments.
 
 ---
 
@@ -65,12 +58,9 @@ Constructs an empty `UnivariateStatistic` object of type Float64 with `K` moment
 
     UnivariateStatistic(::Type{T}, x, K::Int) where {T}
 
-Constructs a `UnivariateStatistic` object  of type `T` with a single sample `x`.
+Constructs a `UnivariateStatistic` object  of type `T` with a single sample `x`. 
+`x`will be converted to type `T` is needed.
 
-# Arguments
-- `T::Type`: The type to which the elements of `x` will be converted.
-- `K::Int`: The number of moments to store.
-- `x`: The sample to be converted to type `T` and passed to the constructor.
 """
 function UnivariateStatistic(weights::I, rawmoments::Vector{T}) where {T,I}
     K = length(rawmoments)
@@ -95,9 +85,6 @@ UnivariateStatistic(::Type{T}, x, K::Int) where {T} = UnivariateStatistic(T.(x),
 
 Constructs a UnivariateStatistic object storing the first `K` moments  from the vector of samples `x`.
 
-# Arguments
-- `K::Int`: The number of moments 
-- `x::AbstractArray{T}`: array of samples where `T` is a subtype of `Number`.
 """
 UnivariateStatistic(x::AbstractArray{T}, K::Int) where {T<:Number} = UnivariateStatistic(Float64.(x), 1, K)
 function UnivariateStatistic(x::AbstractArray{T}, K::Int) where {T<:Union{AbstractFloat,Complex}}
@@ -157,29 +144,28 @@ function get_rawmoments(A::UnivariateStatistic{T,K,I}, k::Int) where {T,K,I}
 end
 
 """
-    get_moments(A::UnivariateStatistic{T,K,I}, k) -> Number
+    get_moments(A::UnivariateStatistic, k) -> Number
 
 Compute the k-th moment of a UnivariateStatistic `A`. 
 
-# Arguments
-- `A::UnivariateStatistic{T,K,I}`: The UnivariateStatistic object containing the samples statistic.
-- `k::Int`: The order of the moment to compute.
-
-# Returns
-- The k-th moment of the statistic. If it is empty, the function returns `0`. 
 """
 get_moments(A::UnivariateStatistic{T,K,I,R}, k) where {T,K,I,R} = ifelse((N = weights(A)) == 0, T(0), get_rawmoments(A, k) / ifelse(k == 1, T(1), T(N)))
 get_moments(A::UnivariateStatistic{T,K,I,R}) where {T,K,I,R} = [get_moments(A, k) for k in 1:K]
 
 """
-    Statistics.mean(A::UnivariateStatistic{T,K,I}) where {T,K,I}
+    mean(A::UnivariateStatistic) 
 
-Compute the mean of a UnivariateStatistic `A` 
-# See also
-- `get_moments`
+Compute the sample mean of a  `A` 
 """
 Statistics.mean(A::UnivariateStatistic{T,K,I,R}) where {T,K,I,R} = get_moments(A, 1)
 
+"""
+    var(A::UnivariateStatistic; corrected=true)
+
+Compute the sample variance of a `A`.  If `corrected` is true, the variance is corrected for bias. 
+The unbias variance estimator is only available for an integer number of sample.
+
+"""
 function Statistics.var(A::UnivariateStatistic{T,K,W}; corrected=true) where {T,K,W}
     N = nobs(A)
     N == 0 && return T(NaN)
@@ -195,6 +181,17 @@ function Statistics.var(A::UnivariateStatistic{T,K,W}; corrected=true) where {T,
     end
 end
 
+"""
+    std(A::UnivariateStatistic)
+Compute the uncorrected sample standard deviation of a `A`. 
+
+"""
+Statistics.std(A::UnivariateStatistic) = sqrt(var(A))
+
+"""
+    skewness(A::UnivariateStatistic)
+Compute the sample skewness of a `A`. The skewness is defined as the third standardized moment.
+"""
 
 function StatsBase.skewness(A::UnivariateStatistic{T,K,Int}) where {T,K}
     3 ≤ K || throw(ArgumentError("third moment is not available for type $(typeof(A))"))
@@ -204,6 +201,11 @@ function StatsBase.skewness(A::UnivariateStatistic{T,K,Int}) where {T,K}
     cm2 == 0 && return T(NaN)
     return cm3 / sqrt(cm2 * cm2 * cm2 / N)
 end
+
+"""
+    kurtosis(A::UnivariateStatistic)
+Compute the sample kurtosis of a `A`. The kurtosis is defined as the fourth standardized moment.
+"""
 
 function StatsBase.kurtosis(A::UnivariateStatistic{T,K,Int}) where {T,K}
     3 ≤ K || throw(ArgumentError("third moment is not available for type $(typeof(A))"))
@@ -220,10 +222,6 @@ end
     Base.push!(A::UnivariateStatistic{T}, y::T2) where {T, T2}
 
 Pushes a new samples `y` into the UnivariateStatistic `A`.
-
-# Arguments
-- `A::UnivariateStatistic{T}`: The UnivariateStatistic object to which elements will be added. The type parameter `T` specifies the expected element type.
-- `y::T2`: the sample or array of sample pushed to `A`. The type `T2` must either match `T` or be promotable to `T`.
 
 # Throws
 - `ArgumentError`: If the type of elements in `y` is not compatible with the type `T` of `A`.
@@ -369,17 +367,19 @@ end
 
 Merges the statistics from `B` into `A` to a new object. The type of the new object will be promoted.
 
-## Arguments
-- `A::UnivariateStatistic`: The destination statistic to be updated.
-- `B::UnivariateStatistic`: The source statistic to merge into `A`.
-
 ## Example
-```julia
-A = UnivariateStatistic(2, [1.0, 0.5])
-B = UnivariateStatistic(2, [2.0, 1.5])
-merge!(A, B)
+```jldoctest
+julia> A = UnivariateStatistic(2, [1.0, 0.5])
+UnivariateStatistic: n=2 | value=[1.0, 0.25]
+
+julia> B = UnivariateStatistic(2, [2.0, 1.5])
+UnivariateStatistic: n=2 | value=[2.0, 0.75]
+
+julia> merge!(A, B)
+UnivariateStatistic: n=4 | value=[1.5, 0.75]
 ```
 """
+
 function Base.merge(A::UnivariateStatistic{T1,1}, B::UnivariateStatistic{T2,K}) where {T1,T2,K}
     T = promote_type(T1, T2)
     if T == T1
