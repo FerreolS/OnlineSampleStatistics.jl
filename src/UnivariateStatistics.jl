@@ -14,7 +14,7 @@ This struct supports online (incremental) updates to the statistics.
 A = UnivariateStatistic([1.0, 2.0, 3.0],2,)
 mean(A)  # Calculate the mean (2.0)
 var(A)  # Calculate the variance (1.0)
-push!(A, 4.0)  # Add a new data point
+fit!(A, 4.0)  # Add a new data point
 ```
 """
 
@@ -80,7 +80,7 @@ function UnivariateStatistic(x::AbstractArray{T}, K::Int) where {T<:Union{Abstra
     K > 0 || throw(ArgumentError("Moment of order $K <= 0 undefined"))
     !(T <: Complex) || K < 3 || throw(ArgumentError("UnivariateStatistic : $K > 2 not implemented for complex numbers"))
     A = UnivariateStatistic(T, K)
-    push!(A, x)
+    fit!(A, x)
     return A
 end
 
@@ -134,7 +134,7 @@ function UnivariateStatistic(x::AbstractArray{T}, w::AbstractArray{TW}, K::Int) 
         A = UnivariateStatistic(T, TW, K)
     end
     nonnegative(w) || throw(ArgumentError("weights can't be negative"))
-    push!(A, x, w)
+    fit!(A, x, w)
     return A
 end
 
@@ -194,7 +194,7 @@ StatsBase.nobs(A::UnivariateStatistic) = A.weights
     weights(A::UnivariateStatistic)
 Return the sum of weights in a `A`.
 """
-weights(A::UnivariateStatistic{T,K,W}) where {T,K,W<:Number} = A.weights
+StatsBase.weights(A::UnivariateStatistic{T,K,W}) where {T,K,W<:Number} = A.weights
 
 """"
     order(A::UnivariateStatistic)
@@ -284,7 +284,7 @@ end
 
 
 """
-    Base.push!(A::UnivariateStatistic{T}, y::T2) where {T, T2}
+    fit!(A::UnivariateStatistic{T}, y::T2) where {T, T2}
 
 Pushes a new samples `y` into the UnivariateStatistic `A`.
 
@@ -292,39 +292,39 @@ Pushes a new samples `y` into the UnivariateStatistic `A`.
 - `ArgumentError`: If the type of elements in `y` is not compatible with the type `T` of `A`.
 
 """
-function Base.push!(A::UnivariateStatistic{T}, y::AbstractArray{T2}) where {T,T2}
+function fit!(A::UnivariateStatistic{T}, y::AbstractArray{T2}) where {T,T2}
     T == eltype(y) || promote_type(T, eltype(y)) == T || throw(ArgumentError("The input for $(typeof(A)) is $T. Found $T2."))
-    push!(A, T.(y))
+    fit!(A, T.(y))
     return A
 end
 
-Base.push!(A::UnivariateStatistic{T}, y::AbstractArray{T}) where {T} = foreach(x -> push!(A, x), y)
+fit!(A::UnivariateStatistic{T}, y::AbstractArray{T}) where {T} = foreach(x -> _fit!(A, x), y)
 
-function Base.push!(A::UnivariateStatistic{T}, y::AbstractArray{T2}, w) where {T,T2}
+function fit!(A::UnivariateStatistic{T}, y::AbstractArray{T2}, w) where {T,T2}
     T == eltype(y) || promote_type(T, eltype(y)) == T || throw(ArgumentError("The input for $(typeof(A)) is $T. Found $T2."))
-    push!(A, T.(y), w)
+    fit!(A, T.(y), w)
 end
 
-function Base.push!(A::UnivariateStatistic{T}, y::AbstractArray{T}, w::AbstractArray) where {T}
+function fit!(A::UnivariateStatistic{T}, y::AbstractArray{T}, w::AbstractArray) where {T}
     for (x, v) ∈ zip(y, w)
-        push!(A, x, v)
+        _fit!(A, x, v)
     end
     return A
 end
 
-function Base.push!(A::UnivariateStatistic{T}, y::AbstractArray{T}, w::Real) where {T}
+function fit!(A::UnivariateStatistic{T}, y::AbstractArray{T}, w::Real) where {T}
     if (w == 1)
-        foreach(x -> push!(A, x), y)
+        foreach(x -> _fit!(A, x), y)
     else
-        foreach(x -> push!(A, x, w), y)
+        foreach(x -> _fit!(A, x, w), y)
     end
     return A
 end
 
 
-function Base.push!(A::UnivariateStatistic{T}, b::T2, w::Real) where {T<:Number,T2<:Number}
+function fit!(A::UnivariateStatistic{T}, b::T2, w::Real) where {T<:Number,T2<:Number}
     promote_type(T, T2) == T || throw(ArgumentError("The input type $T2 is not promotable to $T"))
-    push!(A, T(b), w)
+    _fit!(A, T(b), w)
 end
 
 
@@ -333,14 +333,14 @@ end
 
 #= NOT WEIGHTED DATA =#
 
-function Base.push!(A::UnivariateStatistic{T,1}, b::T) where {T<:Number}
+function _fit!(A::UnivariateStatistic{T,1}, b::T) where {T<:Number}
     μA, = A.rawmoments
     A.rawmoments[1] += inv(A.weights += 1) * (b - μA)
     return A
 end
 
 
-function Base.push!(A::UnivariateStatistic{T,2}, b::T) where {T<:Number}
+function _fit!(A::UnivariateStatistic{T,2}, b::T) where {T<:Number}
     NA = weights(A)
     iN = inv(increment_weights!(A, 1))
     μA, = A.rawmoments
@@ -352,7 +352,7 @@ function Base.push!(A::UnivariateStatistic{T,2}, b::T) where {T<:Number}
 end
 
 
-@generated function Base.push!(A::UnivariateStatistic{T,P,Int}, b::T) where {P,T<:Number}
+@generated function _fit!(A::UnivariateStatistic{T,P,Int}, b::T) where {P,T<:Number}
     code = Expr(:block)
     push!(code.args, quote
         NA = weights(A)
@@ -378,14 +378,14 @@ end
 
 #= WEIGHTED DATA =#
 
-function Base.push!(A::UnivariateStatistic{T,1}, b::T, w::Real) where {T<:Number}
+function _fit!(A::UnivariateStatistic{T,1}, b::T, w::Real) where {T<:Number}
     w == 0 && return A
     A.rawmoments[1] += w * inv(increment_weights!(A, w)) * (b - A.rawmoments[1])
     return A
 end
 
 
-function Base.push!(A::UnivariateStatistic{T,2}, b::T, wb::Real) where {T<:Number}
+function _fit!(A::UnivariateStatistic{T,2}, b::T, wb::Real) where {T<:Number}
     wb == 0 && return A
     wa = weights(A)
     μA, _ = A.rawmoments
@@ -400,7 +400,7 @@ function Base.push!(A::UnivariateStatistic{T,2}, b::T, wb::Real) where {T<:Numbe
     return A
 end
 
-@generated function Base.push!(A::UnivariateStatistic{T,P}, b::T, wb::Real) where {P,T<:Number}
+@generated function _fit!(A::UnivariateStatistic{T,P}, b::T, wb::Real) where {P,T<:Number}
     code = Expr(:block)
     push!(code.args, quote
         wb == 0 && return A
@@ -529,26 +529,26 @@ end
 end
 
 
-#Base.merge!(A::UnivariateStatistic, x::Number) = push!(A, x)
-OnlineStatsBase._fit!(A::UnivariateStatistic, x::Number) = push!(A, x)
+#Base.merge!(A::UnivariateStatistic, x::Number) = fit!(A, x)
+#OnlineStatsBase._fit!(A::UnivariateStatistic, x::Number) = fit!(A, x)
 
-OnlineStatsBase._fit!(A::UnivariateStatistic, x::Number, w::Real) = push!(A, x, w)
+#OnlineStatsBase._fit!(A::UnivariateStatistic, x::Number, w::Real) = fit!(A, x, w)
 
-#OnlineStatsBase._fit!(A::UnivariateStatistic, x::Base.Iterators.Zip) = push!(A, x.is[1], x.is[2])
-#OnlineStatsBase._fit!(A::UnivariateStatistic, x::AbstractArray) = push!(A, x)
+#OnlineStatsBase._fit!(A::UnivariateStatistic, x::Base.Iterators.Zip) = fit!(A, x.is[1], x.is[2])
+#OnlineStatsBase._fit!(A::UnivariateStatistic, x::AbstractArray) = fit!(A, x)
 
-OnlineStatsBase.value(A::UnivariateStatistic) = get_moments(A)
+value(A::UnivariateStatistic) = get_moments(A)
 
-OnlineStatsBase._merge!(A::UnivariateStatistic, B::UnivariateStatistic) = merge!(A, B)
+#OnlineStatsBase._merge!(A::UnivariateStatistic, B::UnivariateStatistic) = merge!(A, B)
 
 #= Overloading fit! for UnivariateStatistic to make Transducers working for weighted data =#
 
-function OnlineStatsBase.fit!(o::UnivariateStatistic{I}, y::Iterators.Zip{<:Tuple{AbstractArray{T},<:AbstractArray{<:Real}}}) where {I,T}
-    I == T || error("The input for $(name(o,false,false)) is $I. Found $T.")
-    for (yi, wi) in y
-        OnlineStatsBase.fit!(o, yi, wi)
-    end
-    o
-end
-OnlineStatsBase.fit!(o::UnivariateStatistic{T}, y::T, w::Real) where {T} = OnlineStatsBase._fit!(o, y, w)
-OnlineStatsBase.fit!(o::UnivariateStatistic{T}, y::Tuple{T,<:Real}) where {T} = OnlineStatsBase._fit!(o, y...)
+# function OnlineStatsBase.fit!(o::UnivariateStatistic{I}, y::Iterators.Zip{<:Tuple{AbstractArray{T},<:AbstractArray{<:Real}}}) where {I,T}
+#     I == T || error("The input for $(name(o,false,false)) is $I. Found $T.")
+#     for (yi, wi) in y
+#         OnlineStatsBase.fit!(o, yi, wi)
+#     end
+#     o
+# end
+#OnlineStatsBase.fit!(o::UnivariateStatistic{T}, y::T, w::Real) where {T} = OnlineStatsBase._fit!(o, y, w)
+fit!(o::UnivariateStatistic{T}, y::Tuple{T,<:Real}) where {T} = _fit!(o, y...)

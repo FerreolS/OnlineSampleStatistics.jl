@@ -37,8 +37,8 @@ using OnlineSampleStatistics
 stat = UnivariateStatistic(4)
 
 # Add data incrementally
-push!(stat, 1.0)
-push!(stat, [2.0, 3.0, 4.0])
+fit!(stat, 1.0)
+fit!(stat, [2.0, 3.0, 4.0])
 
 # Compute statistics
 println("Mean: ", mean(stat))
@@ -61,7 +61,7 @@ julia> N = 100_000_000;
 julia> x =  (randn(N)) .^ 2;
 
 julia> A = UnivariateStatistic(4); # accumulating moments up to 4th
-julia> push!(A,x);
+julia> fit!(A,x);
 
 julia> m = Moments();
 julia> fit!(m,x);
@@ -87,7 +87,7 @@ julia> N = 100_000_000;
 julia> x = 1e9 .+ (randn(N)) .^ 2;
 
 julia> A = UnivariateStatistic(4); # accumulating moments up to 4th
-julia> push!(A,x);
+julia> fit!(A,x);
 
 julia> m = Moments();
 julia> fit!(m,x);
@@ -135,7 +135,7 @@ julia> M = UnivariateStatistic(1); # accumulating mean only (first moment)
 julia> @btime fit!(m,x)
   274.430 ms (0 allocations: 0 bytes)
 
-julia> @btime push!(M,x);
+julia> @btime fit!(M,x);
   280.195 ms (0 allocations: 0 bytes)
 ```
 
@@ -148,7 +148,7 @@ julia> A = UnivariateStatistic(2);
 julia> @btime fit!(v,x);
   311.701 ms (0 allocations: 0 bytes)
 
-julia> @btime push!(A,x);
+julia> @btime fit!(A,x);
   288.229 ms (0 allocations: 0 bytes)
 ```
 
@@ -157,17 +157,17 @@ julia> @btime push!(A,x);
 ```julia-repl
 julia> m = Moments();
 julia> A = UnivariateStatistic(3); # accumulating moments up to 3th
-julia> @btime push!(A,x)
+julia> @btime fit!(A,x)
   575.805 ms (0 allocations: 0 bytes)
 
 julia> @btime fit!(m,x)
   504.927 ms (0 allocations: 0 bytes)
 
 julia> A = UnivariateStatistic(4); # accumulating moments up to 4th
-julia> @btime push!(A,x)
+julia> @btime fit!(A,x)
   2.135 s (0 allocations: 0 bytes)
 
 julia> A = UnivariateStatistic(5); # accumulating moments up to 5th
-julia> @btime push!(A,x)
+julia> @btime fit!(A,x)
   3.898 s (0 allocations: 0 bytes)
 ```

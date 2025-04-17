@@ -23,7 +23,7 @@ using ZippedArrays, StructuredArrays
         @test @inferred(mean(A)) ≈ mean.(A)
 
         A = IndependentStatistic((3, 3), 5)
-        push!(A, data)
+        fit!(A, data)
         @test A == IndependentStatistic(data, 5)
         @test @inferred(order(A)) == 5
         B = [UnivariateStatistic(d, 5) for d ∈ data]
@@ -36,7 +36,7 @@ using ZippedArrays, StructuredArrays
         @test @inferred(nobs(A)) == @inferred(nobs(B))
         @test @inferred(mean(A)) == data
 
-        @inferred(push!(A, -1 .* data))
+        @inferred(fit!(A, -1 .* data))
         @test @inferred(var(A; corrected=false)) == data .^ 2
         @test @inferred(var(A)) == 2 .* data .^ 2
         @test @inferred(skewness(A)) == zeros(Float64, 3, 3)
@@ -55,7 +55,7 @@ using ZippedArrays, StructuredArrays
     # Test error handling for invalid dimensions
     @testset "Error Handling" begin
         A = IndependentStatistic((3, 3), 2)
-        @test_throws DimensionMismatch push!(A, [1.0 2.0; 3.0 4.0])
+        @test_throws DimensionMismatch fit!(A, [1.0 2.0; 3.0 4.0])
     end
 
     @testset "Weighted Data" begin
@@ -83,23 +83,23 @@ using ZippedArrays, StructuredArrays
         @test var(A; corrected=false) ≈ sum(w .* (x .- mean(A)) .^ 2; dims=dims) ./ sum(w; dims=dims)
 
         B = IndependentStatistic(Float64, size(A)[1:2], Int, 2)
-        push!(B, x, w)
+        fit!(B, x, w)
         @test @inferred(dropdims(weights(A); dims=3)) == @inferred(weights(B))
         @test @inferred(dropdims(nobs(A); dims=3)) == @inferred(nobs(B))
         @test @inferred(dropdims(mean(A); dims=3)) == mean(B)
 
         A = IndependentStatistic(Float64, size(A), Float64, 1)
-        @inferred push!(A, Float32.(x), w)
+        @inferred fit!(A, Float32.(x), w)
         @test nobs(A) ≈ sum(w, dims=dims)
 
         A = IndependentStatistic(Float64, size(A), Float64, 1)
-        @inferred push!(A, x, 1)
+        @inferred fit!(A, x, 1)
 
         B = IndependentStatistic(Float64, size(A), 1)
-        @inferred push!(B, x, 1)
+        @inferred fit!(B, x, 1)
 
         C = IndependentStatistic(Float64, size(A), Int, 1)
-        @inferred push!(C, x, trues(size(x)...))
+        @inferred fit!(C, x, trues(size(x)...))
 
         @test @inferred(weights(A)) == @inferred(weights(B))
         @test @inferred(nobs(A)) == @inferred(nobs(B))

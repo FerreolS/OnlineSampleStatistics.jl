@@ -8,11 +8,12 @@ export UnivariateStatistic,
     nobs,
     skewness,
     kurtosis,
-    weights,
     order,
     get_moments
 
-import OnlineStatsBase: value, fit!
+import OnlineStatsBase: value, _fit!, _merge!
+
+import StatsBase: fit!, nobs, mean, var, std, skewness, kurtosis, weights
 
 
 

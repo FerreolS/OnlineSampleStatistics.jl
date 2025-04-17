@@ -78,15 +78,15 @@ function IndependentStatistic(x::AbstractArray{T,N}, w::AbstractArray{TW,N}, K::
     size(x) == size(w) || throw(ArgumentError("IndependentStatistic : size(x) != size(w)"))
     if dims === nothing
         A = IndependentStatistic(T, size(x), TW, K)
-        _push!(A, x, w)
+        _fit!(A, x, w)
     else
         maximum(dims) ≤ N || throw(ArgumentError("IndependentStatistic : $(maximum(dims)) > $N"))
         sz = vcat(size(x)...)
         sz[vcat(dims...)] .= 1
         A = IndependentStatistic(T, NTuple{N,Int}(sz), TW, K)
-        #foreach((y, z) -> push!(A, reshape(y, sz...), reshape(z, sz...)), zip(eachslice(x; dims=dims), eachslice(w; dims=dims)))
+        #foreach((y, z) -> fit!(A, reshape(y, sz...), reshape(z, sz...)), zip(eachslice(x; dims=dims), eachslice(w; dims=dims)))
         for (y, z) ∈ zip(eachslice(x; dims=dims), eachslice(w; dims=dims))
-            _push!(A, reshape(y, sz...), reshape(z, sz...))
+            _fit!(A, reshape(y, sz...), reshape(z, sz...))
         end
     end
     return A
@@ -97,13 +97,13 @@ end
 function IndependentStatistic(x::AbstractArray{T,N}, K::Int; dims=nothing) where {T,N}
     if dims === nothing
         A = IndependentStatistic(T, size(x), K)
-        _push!(A, x)
+        _fit!(A, x)
     else
         maximum(dims) ≤ N || throw(ArgumentError("IndependentStatistic : $(maximum(dims)) > $N"))
         sz = vcat(size(x)...)
         sz[vcat(dims...)] .= 1
         A = IndependentStatistic(T, NTuple{N,Int}(sz), K)
-        foreach(y -> _push!(A, reshape(y, sz...), 1), eachslice(x; dims=dims))
+        foreach(y -> _fit!(A, reshape(y, sz...), 1), eachslice(x; dims=dims))
     end
     return A
 end
@@ -152,17 +152,17 @@ end
 
 
 
-function Base.push!(A::IndependentStatistic{T,N}, x::AbstractArray{T,N2}) where {T,N,N2}
-    N2 ≥ N || throw(ArgumentError("push! : N2 < N"))
+function fit!(A::IndependentStatistic{T,N}, x::AbstractArray{T,N2}) where {T,N,N2}
+    N2 ≥ N || throw(ArgumentError("fit! : N2 < N"))
     dims = NTuple{N2 - N,Int}((ndims(A)+1):ndims(x))
     for y ∈ eachslice(x; dims=dims)
-        _push!(A, reshape(y, size(A)))
+        _fit!(A, reshape(y, size(A)))
     end
     return A
 end
 
-function Base.push!(A::IndependentStatistic{T,N}, x::AbstractArray{T,N}) where {T,N}
-    size(A) == size(x) && return _push!(A, x)
+function fit!(A::IndependentStatistic{T,N}, x::AbstractArray{T,N}) where {T,N}
+    size(A) == size(x) && return _fit!(A, x)
 
     szx = SVector{N,Int}(size(x)...)
     szA = SVector{N,Int}(size(A)...)
@@ -171,10 +171,10 @@ function Base.push!(A::IndependentStatistic{T,N}, x::AbstractArray{T,N}) where {
     singleton = ones(MVector{N,Bool})
     singleton[sgltidx] .= false
 
-    szA[sgltidx] == szx[sgltidx] || throw(DimensionMismatch("push! : size(A) incompatible with size(x)"))
+    szA[sgltidx] == szx[sgltidx] || throw(DimensionMismatch("fit! : size(A) incompatible with size(x)"))
     slc = NTuple{sum(singleton),Int}((1:N)[singleton])
     for y ∈ eachslice(x; dims=slc)
-        _push!(A, reshape(y, szA...))
+        _fit!(A, reshape(y, szA...))
     end
     return A
 end
@@ -187,7 +187,7 @@ end
 @inline increment_weights!(A::IndependentStatistic, x) = increment!(weights(A), x)
 #= NOT WEIGHTED DATA =#
 
-function _push!(A::IndependentStatistic{T,D,1}, b::AbstractArray{T,D}) where {T<:Number,D}
+function _fit!(A::IndependentStatistic{T,D,1}, b::AbstractArray{T,D}) where {T<:Number,D}
     wa = weights(A)
     m1 = get_rawmoments(A, 1)
     if wa isa MutableUniformArray
@@ -209,7 +209,7 @@ end
 
 
 
-function _push!(A::IndependentStatistic{T,D,2}, b::AbstractArray{T,D}) where {T<:Number,D}
+function _fit!(A::IndependentStatistic{T,D,2}, b::AbstractArray{T,D}) where {T<:Number,D}
     wa = weights(A)
     m1 = get_rawmoments(A, 1)
     m2 = get_rawmoments(A, 2)
@@ -235,7 +235,7 @@ function _push!(A::IndependentStatistic{T,D,2}, b::AbstractArray{T,D}) where {T<
 end
 
 
-@generated function _push!(A::IndependentStatistic{T,D,P}, b::AbstractArray{T,D}) where {D,P,T<:Number}
+@generated function _fit!(A::IndependentStatistic{T,D,P}, b::AbstractArray{T,D}) where {D,P,T<:Number}
     code = Expr(:block)
     push!(code.args, quote
         wa = copy(weights(A))
@@ -260,22 +260,22 @@ end
 end
 
 #=  WEIGHTED DATA =#
-Base.push!(A::IndependentStatistic{T}, x::AbstractArray{T2}, w) where {T,T2} = push!(A, T.(x), w)
+fit!(A::IndependentStatistic{T}, x::AbstractArray{T2}, w) where {T,T2} = fit!(A, T.(x), w)
 
-function Base.push!(A::IndependentStatistic{T,N}, x::AbstractArray{T,N2}, w::W) where {T,N,N2,W<:Union{Real,AbstractArray{<:Real,N2}}}
-    N2 ≥ N || throw(ArgumentError("push! : N2 < N"))
+function fit!(A::IndependentStatistic{T,N}, x::AbstractArray{T,N2}, w::W) where {T,N,N2,W<:Union{Real,AbstractArray{<:Real,N2}}}
+    N2 ≥ N || throw(ArgumentError("fit! : N2 < N"))
     if W <: AbstractArray
         size(x) == size(w) || throw(ArgumentError("IndependentStatistic : size(x) != size(w)"))
     end
 
     dims = NTuple{N2 - N,Int}((ndims(A)+1):ndims(x))
     for (y, z) ∈ zip(eachslice(x; dims=dims), eachslice(w; dims=dims))
-        _push!(A, reshape(y, size(A)), reshape(z, size(A)))
+        _fit!(A, reshape(y, size(A)), reshape(z, size(A)))
     end
     return A
 end
 
-function Base.push!(A::IndependentStatistic{T,N,K}, x::AbstractArray{T,N}, w::W) where {T,N,K,W<:Union{Real,AbstractArray{<:Real,N}}}
+function fit!(A::IndependentStatistic{T,N,K}, x::AbstractArray{T,N}, w::W) where {T,N,K,W<:Union{Real,AbstractArray{<:Real,N}}}
     if W <: AbstractArray
         size(x) == size(w) || throw(ArgumentError("IndependentStatistic : size(x) != size(w)"))
     end
@@ -286,22 +286,22 @@ function Base.push!(A::IndependentStatistic{T,N,K}, x::AbstractArray{T,N}, w::W)
     singleton = ones(MVector{N,Bool})
     singleton[sgltidx] .= false
 
-    szA[sgltidx] == szx[sgltidx] || throw(DimensionMismatch("push! : size(A) incompatible with size(x)"))
+    szA[sgltidx] == szx[sgltidx] || throw(DimensionMismatch("fit! : size(A) incompatible with size(x)"))
     slc = NTuple{sum(singleton),Int}((1:N)[singleton])
     if W <: AbstractArray
         for (y, z) ∈ zip(eachslice(x; dims=slc), eachslice(w; dims=slc))
-            _push!(A, reshape(y, szA...), reshape(z, szA...))
+            _fit!(A, reshape(y, szA...), reshape(z, szA...))
         end
     else
 
         for y ∈ eachslice(x; dims=slc)
-            _push!(A, reshape(y, szA...), w)
+            _fit!(A, reshape(y, szA...), w)
         end
     end
     return A
 end
 
-function _push!(A::IndependentStatistic{T,D,1}, b::AbstractArray{T,D}, wb::W) where {D,T<:Real,W<:Union{Real,AbstractArray{<:Real,D}}}
+function _fit!(A::IndependentStatistic{T,D,1}, b::AbstractArray{T,D}, wb::W) where {D,T<:Real,W<:Union{Real,AbstractArray{<:Real,D}}}
 
     wa = weights(A)
     m1 = get_rawmoments(A, 1)
@@ -333,7 +333,7 @@ function _push!(A::IndependentStatistic{T,D,1}, b::AbstractArray{T,D}, wb::W) wh
     return A
 end
 
-@generated function _push!(A::I, b::AbstractArray{T,D}, wb::W) where {P,D,T<:Real,I<:IndependentStatistic{T,D,P},W<:Union{Real,AbstractArray{<:Real,D}}}
+@generated function _fit!(A::I, b::AbstractArray{T,D}, wb::W) where {P,D,T<:Real,I<:IndependentStatistic{T,D,P},W<:Union{Real,AbstractArray{<:Real,D}}}
     code = Expr(:block)
     if W <: AbstractArray
         push!(code.args, quote
