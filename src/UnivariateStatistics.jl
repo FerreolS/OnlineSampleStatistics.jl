@@ -307,10 +307,7 @@ end
 
 function fit!(A::UnivariateStatistic{T}, y::AbstractArray{T}, w::AbstractArray) where {T<:Number}
     size(y) == size(w) || throw(ArgumentError("UnivariateStatistic : size(y) != size(w)"))
-    for (x, v) ∈ zip(y, w)
-        _fit!(A, x, v)
-    end
-    return A
+    fit!(A, zip(y, w))
 end
 
 function fit!(A::UnivariateStatistic{T}, y::AbstractArray{T}, w::Real) where {T<:Number}
@@ -328,7 +325,7 @@ function fit!(A::UnivariateStatistic{T}, b::T2, w::Real) where {T<:Number,T2<:Nu
     _fit!(A, T(b), w)
 end
 
-
+fit!(o::UnivariateStatistic{T}, y::Tuple{T,<:Real}) where {T} = _fit!(o, y...)
 
 @inline increment_weights!(A::UnivariateStatistic, x) = A.weights += x
 
@@ -530,26 +527,4 @@ end
 end
 
 
-#Base.merge!(A::UnivariateStatistic, x::Number) = fit!(A, x)
-#OnlineStatsBase._fit!(A::UnivariateStatistic, x::Number) = fit!(A, x)
-
-#OnlineStatsBase._fit!(A::UnivariateStatistic, x::Number, w::Real) = fit!(A, x, w)
-
-#OnlineStatsBase._fit!(A::UnivariateStatistic, x::Base.Iterators.Zip) = fit!(A, x.is[1], x.is[2])
-#OnlineStatsBase._fit!(A::UnivariateStatistic, x::AbstractArray) = fit!(A, x)
-
 value(A::UnivariateStatistic) = get_moments(A)
-
-#OnlineStatsBase._merge!(A::UnivariateStatistic, B::UnivariateStatistic) = merge!(A, B)
-
-#= Overloading fit! for UnivariateStatistic to make Transducers working for weighted data =#
-
-# function OnlineStatsBase.fit!(o::UnivariateStatistic{I}, y::Iterators.Zip{<:Tuple{AbstractArray{T},<:AbstractArray{<:Real}}}) where {I,T}
-#     I == T || error("The input for $(name(o,false,false)) is $I. Found $T.")
-#     for (yi, wi) in y
-#         OnlineStatsBase.fit!(o, yi, wi)
-#     end
-#     o
-# end
-#OnlineStatsBase.fit!(o::UnivariateStatistic{T}, y::T, w::Real) where {T} = OnlineStatsBase._fit!(o, y, w)
-fit!(o::UnivariateStatistic{T}, y::Tuple{T,<:Real}) where {T} = _fit!(o, y...)
