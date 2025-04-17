@@ -21,6 +21,7 @@ push!(A, 4.0)  # Add a new data point
 mutable struct UnivariateStatistic{T,K,I,R} <: OnlineStatsBase.OnlineStat{T}
     weights::I
     rawmoments::R
+    @doc "Inner constructor rawmoments can be given as a vector or a NTuple"
     function UnivariateStatistic{T,K,I}(weights::I, rawmoments::Vector{T}) where {T,K,I}
         K == length(rawmoments) || throw(ArgumentError("The length of rawmoments $(length(rawmoments)) must be equal to $K"))
         nonnegative(weights) || throw(ArgumentError("weights can't be negative"))
@@ -62,31 +63,19 @@ Constructs a `UnivariateStatistic` object  of type `T` with a single sample `x`.
 `x`will be converted to type `T` is needed.
 
 """
-function UnivariateStatistic(weights::I, rawmoments::Vector{T}) where {T,I}
-    K = length(rawmoments)
-    UnivariateStatistic{T,K,I}(weights, rawmoments)
-end
-
-UnivariateStatistic{T,K,I}(weights::I, rawmoments...) where {T,K,I} = UnivariateStatistic{T,K,I}(weights, rawmoments)
-#UnivariateStatistic{T,K,I}(weights::I, rawmoments...) where {T,K,I} = UnivariateStatistic{T,K,I}(weights, vcat(rawmoments...))
-
 UnivariateStatistic(x::T, K::Int) where {T<:AbstractFloat} = UnivariateStatistic(x, 1, K)
 UnivariateStatistic(x::T, K::Int) where {T<:Number} = UnivariateStatistic(Float64(x), 1, K)
-function UnivariateStatistic(x::T, weight::Number, K::Int) where {T<:Number}
-    K > 0 || throw(ArgumentError("Moment of order $K <= 0 undefined"))
-    UnivariateStatistic(weight, vcat(x, zeros(T, K - 1)))
-end
 UnivariateStatistic(T::Type, K::Int) = UnivariateStatistic(T, Int, K)
-UnivariateStatistic(T::Type, TW::Type, K::Int) = UnivariateStatistic(zero(TW), zeros(T, K))
 UnivariateStatistic(K::Int) = UnivariateStatistic(Float64, K)
 UnivariateStatistic(::Type{T}, x, K::Int) where {T} = UnivariateStatistic(T.(x), K)
+UnivariateStatistic(x::AbstractArray{T}, K::Int) where {T<:Number} = UnivariateStatistic(Float64.(x), 1, K)
+
 """
     UnivariateStatistic(K::Int, x::AbstractArray{T}) where {T<:Number}
 
 Constructs a UnivariateStatistic object storing the first `K` moments  from the vector of samples `x`.
 
 """
-UnivariateStatistic(x::AbstractArray{T}, K::Int) where {T<:Number} = UnivariateStatistic(Float64.(x), 1, K)
 function UnivariateStatistic(x::AbstractArray{T}, K::Int) where {T<:Union{AbstractFloat,Complex}}
     K > 0 || throw(ArgumentError("Moment of order $K <= 0 undefined"))
     !(T <: Complex) || K < 3 || throw(ArgumentError("UnivariateStatistic : $K > 2 not implemented for complex numbers"))
@@ -95,6 +84,42 @@ function UnivariateStatistic(x::AbstractArray{T}, K::Int) where {T<:Union{Abstra
     return A
 end
 
+"""
+    UnivariateStatistic(weights::I, rawmoments::Vector{T}) where {T,I}
+
+Constructs a `UnivariateStatistic` object of type `T` with moments given in `rawmoments`.
+The `weights` is the sum of weights of the samples that were used to construct `rawmoments`
+.
+"""
+
+function UnivariateStatistic(weights::I, rawmoments::Vector{T}) where {T,I}
+    K = length(rawmoments)
+    UnivariateStatistic{T,K,I}(weights, rawmoments)
+end
+
+UnivariateStatistic{T,K,I}(weights::I, rawmoments...) where {T,K,I} = UnivariateStatistic{T,K,I}(weights, rawmoments)
+#UnivariateStatistic{T,K,I}(weights::I, rawmoments...) where {T,K,I} = UnivariateStatistic{T,K,I}(weights, vcat(rawmoments...))
+
+"""
+    UnivariateStatistic(x::T, weight::Number, K::Int) where {T<:Number}
+
+Constructs a `UnivariateStatistic` object with `K` moments of type `T` from a single sample `x` and a weight `weight`.
+The first moment (the mean) is then `x` and the remaining moments are zeros of type `T`.
+"""
+function UnivariateStatistic(x::T, weight::Number, K::Int) where {T<:Number}
+    K > 0 || throw(ArgumentError("Moment of order $K <= 0 undefined"))
+    UnivariateStatistic(weight, vcat(x, zeros(T, K - 1)))
+end
+"""
+    UnivariateStatistic(T::Type, TW::Type, K::Int)
+Constructs an empty `UnivariateStatistic` object of type `T` with `K` moments and weights of type `TW`.
+"""
+UnivariateStatistic(T::Type, TW::Type, K::Int) = UnivariateStatistic(zero(TW), zeros(T, K))
+
+"""
+    UnivariateStatistic(x::AbstractArray{T}, w::AbstractArray, K::Int) where {T<:Number}      
+Constructs a `UnivariateStatistic` object of type `T` with `K` moments from a vector of samples `x` and a vector of weights `w`.
+"""
 UnivariateStatistic(x::AbstractArray{T}, w::AbstractArray, K::Int) where {T<:Number} = UnivariateStatistic(Float64.(x), w, K)
 
 function UnivariateStatistic(x::AbstractArray{T}, w::AbstractArray{TW}, K::Int) where {T<:Union{AbstractFloat,Complex},TW<:Number}
@@ -121,20 +146,60 @@ Check if the input `x` is nonnegative (greater than or equal to zero).
 nonnegative(x) = x ≥ 0
 nonnegative(x::AbstractArray) = all(x .>= 0)
 
+"""
+    zero(::UnivariateStatistic{T}) where {T<:UnivariateStatistic} 
+    zero(::Type{UnivariateStatistic{T,K,I,L}}) where {T,K,I,L}
+
+    return an empty UnivariateStatistic of type `T` with `K` moments and weights of type `I`.
+"""
 Base.zero(::T) where {T<:UnivariateStatistic} = zero(T)
 Base.zero(::Type{UnivariateStatistic{T,K,I,L}}) where {T,K,I,L} = UnivariateStatistic(zero(I), zeros(T, K))
+
+"""
+    empty!(A::UnivariateStatistic)
+
+    Reset the UnivariateStatistic `A` to its initial state. 
+"""
+function Base.empty!(A::UnivariateStatistic)
+    A.weights = zero(A.weights)
+    A.rawmoments .= zero(eltype(A))
+    return A
+end
+
+
+"""
+    eltype(::UnivariateStatistic{T}) where {T}
+
+    return the type of the elements in the UnivariateStatistic.
+"""
+
 Base.eltype(::UnivariateStatistic{T}) where {T} = T
+
 
 Base.:(==)(A::UnivariateStatistic{T,K,I}, B::UnivariateStatistic{T,K,I}) where {T,K,I} = A.rawmoments == B.rawmoments && A.weights == B.weights
 Base.isapprox(A::UnivariateStatistic{T,K,I}, B::UnivariateStatistic{T,K,I}; kwds...) where {T,K,I} = isapprox(A.rawmoments, B.rawmoments; kwds...) && isapprox(A.weights, B.weights; kwds...)
+""" 
+    copy(A::UnivariateStatistic)
+   Copy  (deepcopy) the UnivariateStatistic `A` to a new object.
+"""
 Base.copy(A::UnivariateStatistic) = deepcopy(A)
 
 
-
+"""
+    nobs(A::UnivariateStatistic) 
+Return the number of samples  or the sum of weights in a `A`.
+"""
 StatsBase.nobs(A::UnivariateStatistic) = A.weights
+""" 
+    weights(A::UnivariateStatistic)
+Return the sum of weights in a `A`.
+"""
 weights(A::UnivariateStatistic{T,K,W}) where {T,K,W<:Number} = A.weights
 
-
+""""
+    order(A::UnivariateStatistic)
+Return the number of moments in a `A`.
+"""
 order(::UnivariateStatistic{T,K}) where {T,K} = K
 
 
@@ -398,18 +463,14 @@ end
 """
     merge!(A::UnivariateStatistic, B::UnivariateStatistic)
 
-Merges (inplace) the statistics from `B` into `A` in-place. The weights and raw moments of `A` are updated
-to reflect the combined statistics of both `A` and `B`.
-
-## Arguments
-- `A::UnivariateStatistic`: The destination statistic to be updated.
-- `B::UnivariateStatistic`: The source statistic to merge into `A`.
+Merges (inplace) the statistics from `B` into `A` in-place. 
 
 ## Example
 ```julia
 A = UnivariateStatistic(2, [1.0, 0.5])
 B = UnivariateStatistic(2, [2.0, 1.5])
-merge!(A, B)
+merge!(A, B) 
+A ≈ UnivariateStatistic(2, [1.0, 0.5, 2.0, 1.5])
 ```
 """
 function Base.merge!(A::UnivariateStatistic{T1,1,I}, B::UnivariateStatistic{T2,K,I}) where {T1,T2,K,I}
@@ -478,13 +539,6 @@ OnlineStatsBase._fit!(A::UnivariateStatistic, x::Number, w::Real) = push!(A, x, 
 
 OnlineStatsBase.value(A::UnivariateStatistic) = get_moments(A)
 
-function Base.empty!(A::UnivariateStatistic)
-    A.weights = zero(A.weights)
-    A.rawmoments .= zero(eltype(A))
-    return A
-end
-
-
 OnlineStatsBase._merge!(A::UnivariateStatistic, B::UnivariateStatistic) = merge!(A, B)
 
 #= Overloading fit! for UnivariateStatistic to make Transducers working for weighted data =#
@@ -496,5 +550,5 @@ function OnlineStatsBase.fit!(o::UnivariateStatistic{I}, y::Iterators.Zip{<:Tupl
     end
     o
 end
-OnlineStatsBase.fit!(o::UnivariateStatistic{T}, y::T, w::Real) where {T} = (OnlineStatsBase._fit!(o, y, w); return o)
+OnlineStatsBase.fit!(o::UnivariateStatistic{T}, y::T, w::Real) where {T} = OnlineStatsBase._fit!(o, y, w)
 OnlineStatsBase.fit!(o::UnivariateStatistic{T}, y::Tuple{T,<:Real}) where {T} = OnlineStatsBase._fit!(o, y...)
