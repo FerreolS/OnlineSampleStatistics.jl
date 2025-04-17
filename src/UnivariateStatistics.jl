@@ -292,27 +292,28 @@ Pushes a new samples `y` into the UnivariateStatistic `A`.
 - `ArgumentError`: If the type of elements in `y` is not compatible with the type `T` of `A`.
 
 """
-function fit!(A::UnivariateStatistic{T}, y::AbstractArray{T2}) where {T,T2}
+function fit!(A::UnivariateStatistic{T}, y::AbstractArray{T2}) where {T,T2<:Number}
     T == eltype(y) || promote_type(T, eltype(y)) == T || throw(ArgumentError("The input for $(typeof(A)) is $T. Found $T2."))
     fit!(A, T.(y))
     return A
 end
 
-fit!(A::UnivariateStatistic{T}, y::AbstractArray{T}) where {T} = foreach(x -> _fit!(A, x), y)
+fit!(A::UnivariateStatistic{T}, y::AbstractArray{T}) where {T<:Number} = foreach(x -> _fit!(A, x), y)
 
-function fit!(A::UnivariateStatistic{T}, y::AbstractArray{T2}, w) where {T,T2}
+function fit!(A::UnivariateStatistic{T}, y::AbstractArray{T2}, w) where {T,T2<:Number}
     T == eltype(y) || promote_type(T, eltype(y)) == T || throw(ArgumentError("The input for $(typeof(A)) is $T. Found $T2."))
     fit!(A, T.(y), w)
 end
 
-function fit!(A::UnivariateStatistic{T}, y::AbstractArray{T}, w::AbstractArray) where {T}
+function fit!(A::UnivariateStatistic{T}, y::AbstractArray{T}, w::AbstractArray) where {T<:Number}
+    size(y) == size(w) || throw(ArgumentError("UnivariateStatistic : size(y) != size(w)"))
     for (x, v) ∈ zip(y, w)
         _fit!(A, x, v)
     end
     return A
 end
 
-function fit!(A::UnivariateStatistic{T}, y::AbstractArray{T}, w::Real) where {T}
+function fit!(A::UnivariateStatistic{T}, y::AbstractArray{T}, w::Real) where {T<:Number}
     if (w == 1)
         foreach(x -> _fit!(A, x), y)
     else

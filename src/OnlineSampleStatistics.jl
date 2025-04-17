@@ -9,7 +9,9 @@ export UnivariateStatistic,
     skewness,
     kurtosis,
     order,
-    get_moments
+    get_moments,
+    fit!,
+    merge!
 
 import OnlineStatsBase: value, _fit!, _merge!
 

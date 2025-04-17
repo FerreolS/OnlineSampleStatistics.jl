@@ -13,14 +13,13 @@
 [doc-img]: https://img.shields.io/badge/docs-latest-blue.svg
 [doc-url]: https://ferreols.github.io/OnlineSampleStatistics.jl/dev/
 
-`OnlineSampleStatistics.jl` is a Julia package for online single pass estimation of statistical moments.
+`OnlineSampleStatistics.jl` is a Julia package for online single pass estimation of statistical moments. It implements  formulae from [Pébay et al 2016](https://doi.org/10.1007/s00180-015-0637-z)
 
 ## Features
 
 - compute any moment (mean, variance, skewness, kurtosis, etc.) in a single pass
 - numerically stable (avoids catastrophic cancellation even for non-centered data)
-- memory efficient (0 allocations)
-- fast
+- memory efficient (0 allocations) and fast ( $ \approx 10\,\textrm{ns}$  per sample for the first two moments)
 - handle weighted data
 - cope with univariate and multivariate (array) data
   
@@ -28,7 +27,10 @@ Designed for scenarios where data arrives in a streaming fashion or when memory 
 
 ## Usage
 
+It  mainly implements of two types: `UnivariateStatistic`  and `IndependentStatistic`. For both types, `StatsBase` functions can be used to query `weights`, `nobs`, `mean`, `var`, `std`, `skewness` and `kurtosis.`
+
 ### Univariate Statistics
+`UnivariateStatistic{T,K}`  tracks `K` moments of a univariate data stream of type `T`. 
 
 ```julia
 using OnlineSampleStatistics
@@ -156,12 +158,13 @@ julia> @btime fit!(A,x);
 
 ```julia-repl
 julia> m = Moments();
-julia> A = UnivariateStatistic(3); # accumulating moments up to 3th
-julia> @btime fit!(A,x)
-  575.805 ms (0 allocations: 0 bytes)
 
 julia> @btime fit!(m,x)
   504.927 ms (0 allocations: 0 bytes)
+
+julia> A = UnivariateStatistic(3); # accumulating moments up to 3th
+julia> @btime fit!(A,x)
+  575.805 ms (0 allocations: 0 bytes)
 
 julia> A = UnivariateStatistic(4); # accumulating moments up to 4th
 julia> @btime fit!(A,x)
