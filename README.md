@@ -27,10 +27,12 @@ Designed for scenarios where data arrives in a streaming fashion or when memory 
 
 ## Usage
 
-It  mainly implements of two types: `UnivariateStatistic`  and `IndependentStatistic`. For both types, `StatsBase` functions can be used to query `weights`, `nobs`, `mean`, `var`, `std`, `skewness` and `kurtosis.`
+It  mainly implements of two types: `UnivariateStatistic`  and `IndependentStatistic`. For both types, 
+adding samples to the statistic is done using the `fit!` methods.  It supports weighted sample.
+`StatsBase` methods are used to query `weights`, `nobs`, `mean`, `var`, `std`, `skewness` and `kurtosis`.
 
 ### Univariate Statistics
-`UnivariateStatistic{T,K}`  tracks `K` moments of a univariate data stream of type `T`. 
+`UnivariateStatistic{T,K}` tracks `K` statistical moments of a univariate data stream of type `T`.  It is defined as a subtype of `OnlineStats{T}` from  [OnlineStats.jl](https://github.com/joshday/OnlineStats.jl) to leverage its functionality, including the [Transducers.jl](https://github.com/JuliaFolds/Transducers.jl)   methods for parallel processing. 
 
 ```julia
 using OnlineSampleStatistics
@@ -39,14 +41,39 @@ using OnlineSampleStatistics
 stat = UnivariateStatistic(4)
 
 # Add data incrementally
-fit!(stat, 1.0)
-fit!(stat, [2.0, 3.0, 4.0])
+fit!(stat, 1.0)                                             # single sample
+fit!(stat, [2.0, 3.0, 4.0])                                 # array of samples
+fit!(stat, skipmissing( [missing, 5.0, 6.0, 7.0, missing])) # iterator of samples
 
 # Compute statistics
+println("Number of samples: ", nobs(stat)) 
 println("Mean: ", mean(stat))
 println("Variance: ", var(stat))
 println("Skewness: ", skewness(stat))
 println("Kurtosis: ", kurtosis(stat))
+
+# Compute weighted statistics
+fit!(stat, 1.0,2.0)                           # single sample with weight
+fit!(stat, [2.0, 3.0, 4.0], [1.0, 2.0, 3.0])  # array of samples with weights
+```
+
+### Independent Statistics
+
+`IndependentStatistic{T,K,N}` tracks `K` statistical moments of a independent multivariate data stream. It is a subtype of `AbstractArray{UnivariateStatistic{T,K},N}` that use a `ZippedArrays` to ensure the efficiency of the updates.
+
+```julia-repl
+julia> using OnlineSampleStatistics
+
+julia> x = randn(3, 4, 10); #  array of samples
+julia> w = rand(3, 4, 10);  #  array of weights
+julia> stat = IndependentStatistic(x,w, 2; dims=3); # Tracking 2  statistical moments along dimension dims=3.
+
+julia> size(stat)
+(3, 4, 1)
+
+julia> mean(stat)           # weighted mean
+3×4×1 Array{Float64, 3}:
+...
 ```
 
 ## Comparison with [OnlineStats.jl](https://github.com/joshday/OnlineStats.jl)
@@ -124,7 +151,7 @@ julia> kurtosis(m) , kurtosis(A), kurtosis(x)
 
 ### Performance
 
-Performance is similar for both packages for the first two moments. However the additional computation in `OninesSampleStatistics.jl` to ensure numerical precision for higher moments scales exponentially with the number of stored moments.
+Performance is similar for both packages for the first two moments. However the additional computation in `OnlineSampleStatistics.jl` to ensure numerical precision for higher moments scales exponentially with the number of stored moments.
 
 #### Mean
 
