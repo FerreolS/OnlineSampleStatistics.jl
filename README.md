@@ -59,7 +59,7 @@ fit!(stat, [2.0, 3.0, 4.0], [1.0, 2.0, 3.0])  # array of samples with weights
 
 ### Independent Statistics
 
-`IndependentStatistic{T,K,N}` tracks `K` statistical moments of a independent multivariate data stream. It is a subtype of `AbstractArray{UnivariateStatistic{T,K},N}` that use a `ZippedArrays` to ensure the efficiency of the updates.
+`IndependentStatistic{T,K,N}` tracks `K` statistical moments of an independent multivariate data stream. It is a subtype of `AbstractArray{UnivariateStatistic{T,K},N}` that uses a `ZippedArrays` to ensure the efficiency of the updates.
 
 ```julia-repl
 julia> using OnlineSampleStatistics
