@@ -51,7 +51,41 @@ using ZippedArrays, StructuredArrays
         @test @inferred(mean(C)) ≈ data
     end
 
+    @testset "weightless moments estimation" begin
+        sz = (2, 3)
+        x = randn(sz..., 10)
+        A = IndependentStatistic(sz, 1)
+        B = IndependentStatistic(Float64, sz, Int, 1)
+        fit!(A, x)
+        fit!(B, x)
+        @test mean(A) ≈ dropdims(mean(x; dims=3), dims=3)
+        @test mean(B) ≈ dropdims(mean(x; dims=3), dims=3)
 
+        A = IndependentStatistic(sz, 2)
+        B = IndependentStatistic(Float64, sz, Int, 2)
+        fit!(A, x)
+        fit!(B, x)
+        @test mean(A) ≈ dropdims(mean(x; dims=3), dims=3)
+        @test mean(B) ≈ dropdims(mean(x; dims=3), dims=3)
+        @test var(A) ≈ dropdims(var(x; dims=3), dims=3)
+        @test var(B) ≈ dropdims(var(x; dims=3), dims=3)
+
+        A = IndependentStatistic(sz, 4)
+        B = IndependentStatistic(Float64, sz, Int, 4)
+        fit!(A, x)
+        fit!(B, x)
+        @test mean(A) ≈ dropdims(mean(x; dims=3), dims=3)
+        @test mean(B) ≈ dropdims(mean(x; dims=3), dims=3)
+        @test var(A) ≈ dropdims(var(x; dims=3), dims=3)
+        @test var(B) ≈ dropdims(var(x; dims=3), dims=3)
+        @test skewness(A) ≈ dropdims(mapslices(skewness, x; dims=3), dims=3)
+        @test skewness(B) ≈ dropdims(mapslices(skewness, x; dims=3), dims=3)
+        @test kurtosis(A) ≈ dropdims(mapslices(kurtosis, x; dims=3), dims=3)
+        @test kurtosis(B) ≈ dropdims(mapslices(kurtosis, x; dims=3), dims=3)
+
+
+
+    end
     # Test error handling for invalid dimensions
     @testset "Error Handling" begin
         A = IndependentStatistic((3, 3), 2)
