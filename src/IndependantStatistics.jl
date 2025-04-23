@@ -1,4 +1,4 @@
-using ZippedArrays, StructuredArrays, StaticArrays
+using ZippedArrays, StructuredArrays, StaticArrays, KernelAbstractions
 #= getters on AbstractArrays that are not  IndependentStatistic =#
 """
     get_rawmoments(x::AbstractArray{<:UnivariateStatistic})
@@ -197,17 +197,25 @@ function _fit!(A::IndependentStatistic{T,D,1}, b::AbstractArray{T,D}) where {T<:
             m1[i] += iN[i] * δBA
         end
     else
-        @inbounds @simd for i in eachindex(m1, b)
-            wa[i] += T(1)
-            δBA = (b[i] - m1[i])
-            m1[i] += inv(wa[i]) * δBA
-        end
+        #=         @inbounds @simd for i in eachindex(m1, b)
+                    wa[i] += T(1)
+                    δBA = (b[i] - m1[i])
+                    m1[i] += inv(wa[i]) * δBA
+                end =#
+        mean_kernel(get_backend(m1))(m1, wa, b; ndrange=size(m1))
+        synchronize(get_backend(m1))
     end
 
     return A
 end
 
 
+@kernel function mean_kernel(m1::AbstractArray{T,N}, wa, b) where {T,N}
+    I = @index(Global, Linear)
+    @inbounds wa[I] += T(1)
+    @inbounds δBA = (b[I] - m1[I])
+    @inbounds m1[I] += inv(wa[I]) * δBA
+end
 
 function _fit!(A::IndependentStatistic{T,D,2}, b::AbstractArray{T,D}) where {T<:Number,D}
     wa = weights(A)
@@ -221,7 +229,7 @@ function _fit!(A::IndependentStatistic{T,D,2}, b::AbstractArray{T,D}) where {T<:
             m1[i] += iN[i] * δBA
             m2[i] += iN[i] * wa[i] * abs2(δBA)
         end
-    else
+    else#= 
         @inbounds @simd for i in eachindex(m1, m2, b)
             δBA = (b[i] - m1[i])
             wa[i] += 1
@@ -229,9 +237,24 @@ function _fit!(A::IndependentStatistic{T,D,2}, b::AbstractArray{T,D}) where {T<:
             m1[i] += iN * δBA
             m2[i] += iN * wa[i] * abs2(δBA)
 
-        end
+        end =#
+        var_kernel(get_backend(m1), 32)(m1, m2, wa, b; ndrange=size(m1))
+        synchronize(get_backend(m1))
+
     end
     return A
+end
+
+
+@kernel function var_kernel(m1::AbstractArray{T,N}, m2, wa, b) where {T,N}
+    i = @index(Global, Linear)
+    @inbounds δBA = (b[i] - m1[i])
+    @inbounds w = wa[i]
+    @inbounds wa[i] += oneunit(T)
+    @inbounds iN = inv(wa[i])
+    @inbounds m1[i] += iN * δBA
+    @inbounds m2[i] += iN * w * abs2(δBA)
+
 end
 
 
