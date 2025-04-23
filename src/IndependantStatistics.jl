@@ -224,11 +224,11 @@ function _fit!(A::IndependentStatistic{T,D,2}, b::AbstractArray{T,D}) where {T<:
     else
         @inbounds @simd for i in eachindex(m1, m2, b)
             δBA = (b[i] - m1[i])
+            w = wa[i]
             wa[i] += 1
             iN = inv(wa[i])
             m1[i] += iN * δBA
-            m2[i] += iN * wa[i] * abs2(δBA)
-
+            m2[i] += iN * w * abs2(δBA)
         end
     end
     return A
