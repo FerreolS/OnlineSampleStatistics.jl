@@ -19,7 +19,7 @@
 
 - compute any moment (mean, variance, skewness, kurtosis, etc.) in a single pass
 - numerically stable (avoids catastrophic cancellation even for non-centered data)
-- memory efficient (0 allocations) and fast ( $ \approx 10\,\textrm{ns}$  per sample for the first two moments)
+- memory efficient (0 allocations) and fast ($\approx 10\\,\text{ns}$  per sample for the first two moments)
 - handle weighted data
 - cope with univariate and multivariate (array) data
   
