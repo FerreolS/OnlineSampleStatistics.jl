@@ -144,7 +144,7 @@ end
 Check if the input `x` is nonnegative (greater than or equal to zero).
 """
 nonnegative(x) = x ≥ 0
-nonnegative(x::AbstractArray) = all(x .>= 0)
+nonnegative(x::AbstractArray) = mapreduce(nonnegative, &, x)
 
 """
     zero(::UnivariateStatistic{T}) where {T<:UnivariateStatistic} 
