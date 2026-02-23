@@ -52,7 +52,7 @@
 
         merge!(C, D)
         @test @inferred mean(C) == 0.5
-        @test @inferred var(C; corrected=false) == 0.25
+        @test @inferred var(C; corrected = false) == 0.25
 
         E = UnivariateStatistic(Float32, 2)
         fit!(E, ones(Float32, 10))
@@ -77,37 +77,37 @@
     end
 
     @testset "higher moments" begin
-        x = 1e9 .+ (randn(10^6)) .^ 2
+        x = 1.0e9 .+ (randn(10^6)) .^ 2
         A = UnivariateStatistic(4)
         @test @inferred isnan(skewness(A))
         @test @inferred isnan(kurtosis(A))
         fit!(A, x)
         @test @inferred(order(A)) == 4
         @test @inferred mean(A) ≈ mean(x)
-        @test @inferred isapprox(var(A), var(x); rtol=1e-6)
-        @test @inferred isapprox(var(A; corrected=false), var(x; corrected=false); rtol=1e-6)
-        @test @inferred isapprox(skewness(A), skewness(x); rtol=1e-6)
-        @test @inferred isapprox(kurtosis(A), kurtosis(x); rtol=1e-6)
+        @test @inferred isapprox(var(A), var(x); rtol = 1.0e-6)
+        @test @inferred isapprox(var(A; corrected = false), var(x; corrected = false); rtol = 1.0e-6)
+        @test @inferred isapprox(skewness(A), skewness(x); rtol = 1.0e-6)
+        @test @inferred isapprox(kurtosis(A), kurtosis(x); rtol = 1.0e-6)
 
-        x1 = x[1:10^5]
-        x2 = x[(10^5+1):end]
+        x1 = x[1:(10^5)]
+        x2 = x[(10^5 + 1):end]
         B = UnivariateStatistic(x1, 4)
         C = UnivariateStatistic(x2, 4)
         merge!(B, C)
-        @test isapprox(A.rawmoments, B.rawmoments; rtol=1e-6)
+        @test isapprox(A.rawmoments, B.rawmoments; rtol = 1.0e-6)
     end
 
     @testset "Complex numbers" begin
-        x = Complex.(1e9 .+ (randn(10^6)) .^ 2, randn(10^6))
+        x = Complex.(1.0e9 .+ (randn(10^6)) .^ 2, randn(10^6))
         @test_throws ArgumentError UnivariateStatistic(x, 4)
 
         A = UnivariateStatistic(x, 2)
-        x1 = x[1:10^5]
-        x2 = x[(10^5+1):end]
+        x1 = x[1:(10^5)]
+        x2 = x[(10^5 + 1):end]
         B = UnivariateStatistic(x1, 2)
         C = UnivariateStatistic(x2, 2)
         merge!(B, C)
-        @test isapprox(A.rawmoments, B.rawmoments; rtol=1e-6)
+        @test isapprox(A.rawmoments, B.rawmoments; rtol = 1.0e-6)
     end
 
     @testset "error handling" begin
@@ -119,15 +119,15 @@
 
     @testset "Transducers Tests" begin
         using Transducers
-        x = 1e9 .+ (randn(10^6)) .^ 2
+        x = 1.0e9 .+ (randn(10^6)) .^ 2
         A = UnivariateStatistic(4)
         fit!(A, x)
         B = foldxt(UnivariateStatistic(4), x)
-        @test isapprox(A, B; rtol=1e-6)
+        @test isapprox(A, B; rtol = 1.0e-6)
 
         A = fit!(UnivariateStatistic(Complex{Float64}, 2), x)
         B = foldxt(UnivariateStatistic(Complex{Float64}, 2), Complex.(x))
-        @test isapprox(A, B; rtol=1e-6)
+        @test isapprox(A, B; rtol = 1.0e-6)
 
     end
 
@@ -138,7 +138,7 @@
         A = UnivariateStatistic(x, w, 4)
         @test nobs(A) ≈ sum(w)
         @test mean(A) ≈ sum(w .* x) ./ sum(w)
-        @test isapprox(var(A, corrected=false), sum(w .* (x .- mean(A)) .^ 2) ./ sum(w); rtol=1e-6)
+        @test isapprox(var(A, corrected = false), sum(w .* (x .- mean(A)) .^ 2) ./ sum(w); rtol = 1.0e-6)
         @test_logs (:warn, "The number of samples is not an integer. The variance is not corrected.") var(A)
 
 
@@ -151,7 +151,7 @@
         fit!(A, Float32.(x), 2.0)
         @test @inferred(nobs(A)) ≈ 2 * length(x)
         @test @inferred(mean(A)) ≈ mean(Float32.(x))
-        @test @inferred(var(A, corrected=false)) ≈ var(x, corrected=false)
+        @test @inferred(var(A, corrected = false)) ≈ var(x, corrected = false)
 
     end
     @testset "Weighted Data with Transducers" begin

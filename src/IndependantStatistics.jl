@@ -7,8 +7,8 @@ Retrieve the raw moments from an array of `UnivariateStatistic` objects.
 Returns an array where each element corresponds to the raw moments of the respective `UnivariateStatistic` in `x`.
 
 """
-function get_rawmoments(A::AbstractArray{<:UnivariateStatistic{T,K},N}) where {T,K,N}
-    NTuple{K,Array{T,N}}([get_rawmoments(x, j) for x ∈ A] for j ∈ 1:K)
+function get_rawmoments(A::AbstractArray{<:UnivariateStatistic{T, K}, N}) where {T, K, N}
+    return NTuple{K, Array{T, N}}([get_rawmoments(x, j) for x in A] for j in 1:K)
 end
 
 """
@@ -21,7 +21,7 @@ weights(x::AbstractArray{<:UnivariateStatistic}) = map(x -> x.weights, x)
 
 """
     get_rawmoments(x::AbstractArray{UnivariateStatistic}, k::Int)
-
+ 
 Retrieve the `k`-th raw moments from an array of `UnivariateStatistic` objects. 
 Returns an array where each element corresponds to the `k`-th raw moment of the respective `UnivariateStatistic` in `x`.
 
@@ -47,23 +47,23 @@ Returns an array where each element corresponds to the `k`-th moment of the resp
 """
 get_moments(x::AbstractArray{<:UnivariateStatistic}, k::Int) = map(y -> get_moments(y, k), x)
 
-order(::AbstractArray{<:UnivariateStatistic{T,K}}) where {T,K} = K
+order(::AbstractArray{<:UnivariateStatistic{T, K}}) where {T, K} = K
 
 #===  IndependentStatistic ===#
 
-IndependentStatistic{T,N,K,W} = ZippedArray{UnivariateStatistic{T,K,W},N,K2,I,A} where {I,A,K2}
+IndependentStatistic{T, N, K, W} = ZippedArray{UnivariateStatistic{T, K, W}, N, K2, I, A} where {I, A, K2}
 
 
 #= constructor for IndependentStatistic =#
-IndependentStatistic(sz::NTuple{N,Int}, K::Int) where {N} = IndependentStatistic(Float64, sz, K)
+IndependentStatistic(sz::NTuple{N, Int}, K::Int) where {N} = IndependentStatistic(Float64, sz, K)
 
-function IndependentStatistic(::Type{T}, sz::NTuple{N,Int}, K::Int) where {T,N}
+function IndependentStatistic(::Type{T}, sz::NTuple{N, Int}, K::Int) where {T, N}
     K > 0 || throw(ArgumentError("Moment of order $K <= 0 undefined"))
     rawmoments = (zeros(T, sz) for _ in 1:K)
-    ZippedArray{UnivariateStatistic{T,K,Int}}(MutableUniformArray(0, sz...), rawmoments...)
+    return ZippedArray{UnivariateStatistic{T, K, Int}}(MutableUniformArray(0, sz...), rawmoments...)
 end
 
-function IndependentStatistic(::Type{T}, sz::NTuple{N,Int}, ::Type{TW}, K::Int) where {TW,T,N}
+function IndependentStatistic(::Type{T}, sz::NTuple{N, Int}, ::Type{TW}, K::Int) where {TW, T, N}
     K > 0 || throw(ArgumentError("Moment of order $K <= 0 undefined"))
     rawmoments = (zeros(T, sz) for _ in 1:K)
     if TW == Bool
@@ -71,10 +71,10 @@ function IndependentStatistic(::Type{T}, sz::NTuple{N,Int}, ::Type{TW}, K::Int) 
     else
         weights = zeros(TW, sz)
     end
-    ZippedArray{UnivariateStatistic{T,K,eltype(weights)}}(weights, rawmoments...)
+    return ZippedArray{UnivariateStatistic{T, K, eltype(weights)}}(weights, rawmoments...)
 end
 
-function IndependentStatistic(x::AbstractArray{T,N}, w::AbstractArray{TW,N}, K::Int; dims=nothing) where {TW,T,N}
+function IndependentStatistic(x::AbstractArray{T, N}, w::AbstractArray{TW, N}, K::Int; dims = nothing) where {TW, T, N}
     size(x) == size(w) || throw(ArgumentError("IndependentStatistic : size(x) != size(w)"))
     if dims === nothing
         A = IndependentStatistic(T, size(x), TW, K)
@@ -83,9 +83,9 @@ function IndependentStatistic(x::AbstractArray{T,N}, w::AbstractArray{TW,N}, K::
         maximum(dims) ≤ N || throw(ArgumentError("IndependentStatistic : $(maximum(dims)) > $N"))
         sz = vcat(size(x)...)
         sz[vcat(dims...)] .= 1
-        A = IndependentStatistic(T, NTuple{N,Int}(sz), TW, K)
+        A = IndependentStatistic(T, NTuple{N, Int}(sz), TW, K)
         #foreach((y, z) -> fit!(A, reshape(y, sz...), reshape(z, sz...)), zip(eachslice(x; dims=dims), eachslice(w; dims=dims)))
-        for (y, z) ∈ zip(eachslice(x; dims=dims), eachslice(w; dims=dims))
+        for (y, z) in zip(eachslice(x; dims = dims), eachslice(w; dims = dims))
             _fit!(A, reshape(y, sz...), reshape(z, sz...))
         end
     end
@@ -93,8 +93,7 @@ function IndependentStatistic(x::AbstractArray{T,N}, w::AbstractArray{TW,N}, K::
 end
 
 
-
-function IndependentStatistic(x::AbstractArray{T,N}, K::Int; dims=nothing) where {T,N}
+function IndependentStatistic(x::AbstractArray{T, N}, K::Int; dims = nothing) where {T, N}
     if dims === nothing
         A = IndependentStatistic(T, size(x), K)
         _fit!(A, x)
@@ -102,8 +101,8 @@ function IndependentStatistic(x::AbstractArray{T,N}, K::Int; dims=nothing) where
         maximum(dims) ≤ N || throw(ArgumentError("IndependentStatistic : $(maximum(dims)) > $N"))
         sz = vcat(size(x)...)
         sz[vcat(dims...)] .= 1
-        A = IndependentStatistic(T, NTuple{N,Int}(sz), K)
-        foreach(y -> _fit!(A, reshape(y, sz...), 1), eachslice(x; dims=dims))
+        A = IndependentStatistic(T, NTuple{N, Int}(sz), K)
+        foreach(y -> _fit!(A, reshape(y, sz...), 1), eachslice(x; dims = dims))
     end
     return A
 end
@@ -111,17 +110,17 @@ end
 
 #= getters on IndependentStatistic =#
 
-get_rawmoments(x::IndependentStatistic{T,N,K,I}) where {T,N,K,I} = @inbounds x.args[2:K+1]
+get_rawmoments(x::IndependentStatistic{T, N, K, I}) where {T, N, K, I} = @inbounds x.args[2:(K + 1)]
 weights(x::IndependentStatistic) = @inbounds x.args[1]
-get_rawmoments(x::IndependentStatistic{T,N,K,I}, k::Int) where {T,N,K,I} = @inbounds x.args[2:K+1][k]
-order(::IndependentStatistic{T,N,K}) where {T,N,K} = K
+get_rawmoments(x::IndependentStatistic{T, N, K, I}, k::Int) where {T, N, K, I} = @inbounds x.args[2:(K + 1)][k]
+order(::IndependentStatistic{T, N, K}) where {T, N, K} = K
 
 #= statistic functions =#
 StatsBase.nobs(x::IndependentStatistic) = @inbounds x.args[1]
 
 Statistics.mean(A::IndependentStatistic) = get_rawmoments(A, 1)
 
-function Statistics.var(A::IndependentStatistic{T,N,K,I}; corrected=true) where {T,N,K,I}
+function Statistics.var(A::IndependentStatistic{T, N, K, I}; corrected = true) where {T, N, K, I}
     2 ≤ K || throw(ArgumentError("second moment is not available for type $(typeof(A))"))
     W = nobs(A)
     if corrected
@@ -132,7 +131,7 @@ function Statistics.var(A::IndependentStatistic{T,N,K,I}; corrected=true) where 
 end
 
 
-function StatsBase.skewness(A::IndependentStatistic{T,N,K}) where {T,N,K}
+function StatsBase.skewness(A::IndependentStatistic{T, N, K}) where {T, N, K}
     3 ≤ K || throw(ArgumentError("third moment is not available for type $(typeof(A))"))
     W = nobs(A)
     cm2 = get_rawmoments(A, 2)
@@ -140,7 +139,7 @@ function StatsBase.skewness(A::IndependentStatistic{T,N,K}) where {T,N,K}
     return @. cm3 / sqrt(cm2 * cm2 * cm2 / W)
 end
 
-function StatsBase.kurtosis(A::IndependentStatistic{T,N,K}) where {T,N,K}
+function StatsBase.kurtosis(A::IndependentStatistic{T, N, K}) where {T, N, K}
     4 ≤ K || throw(ArgumentError("fourth moment is not available for type $(typeof(A))"))
     W = nobs(A)
     cm2 = get_rawmoments(A, 2)
@@ -149,31 +148,28 @@ function StatsBase.kurtosis(A::IndependentStatistic{T,N,K}) where {T,N,K}
 end
 
 
-
-
-
-function fit!(A::IndependentStatistic{T,N}, x::AbstractArray{T,N2}) where {T,N,N2}
+function fit!(A::IndependentStatistic{T, N}, x::AbstractArray{T, N2}) where {T, N, N2}
     N2 ≥ N || throw(ArgumentError("fit! : N2 < N"))
-    dims = NTuple{N2 - N,Int}((ndims(A)+1):ndims(x))
-    for y ∈ eachslice(x; dims=dims)
+    dims = NTuple{N2 - N, Int}((ndims(A) + 1):ndims(x))
+    for y in eachslice(x; dims = dims)
         _fit!(A, reshape(y, size(A)))
     end
     return A
 end
 
-function fit!(A::IndependentStatistic{T,N}, x::AbstractArray{T,N}) where {T,N}
+function fit!(A::IndependentStatistic{T, N}, x::AbstractArray{T, N}) where {T, N}
     size(A) == size(x) && return _fit!(A, x)
 
-    szx = SVector{N,Int}(size(x)...)
-    szA = SVector{N,Int}(size(A)...)
+    szx = SVector{N, Int}(size(x)...)
+    szA = SVector{N, Int}(size(A)...)
 
     sgltidx = findall(szA .!= 1)
-    singleton = ones(MVector{N,Bool})
+    singleton = ones(MVector{N, Bool})
     singleton[sgltidx] .= false
 
     szA[sgltidx] == szx[sgltidx] || throw(DimensionMismatch("fit! : size(A) incompatible with size(x)"))
-    slc = NTuple{sum(singleton),Int}((1:N)[singleton])
-    for y ∈ eachslice(x; dims=slc)
+    slc = NTuple{sum(singleton), Int}((1:N)[singleton])
+    for y in eachslice(x; dims = slc)
         _fit!(A, reshape(y, szA...))
     end
     return A
@@ -187,7 +183,7 @@ end
 @inline increment_weights!(A::IndependentStatistic, x) = increment!(weights(A), x)
 #= NOT WEIGHTED DATA =#
 
-function _fit!(A::IndependentStatistic{T,D,1}, b::AbstractArray{T,D}) where {T<:Number,D}
+function _fit!(A::IndependentStatistic{T, D, 1}, b::AbstractArray{T, D}) where {T <: Number, D}
     wa = weights(A)
     m1 = get_rawmoments(A, 1)
     if wa isa MutableUniformArray
@@ -208,8 +204,7 @@ function _fit!(A::IndependentStatistic{T,D,1}, b::AbstractArray{T,D}) where {T<:
 end
 
 
-
-function _fit!(A::IndependentStatistic{T,D,2}, b::AbstractArray{T,D}) where {T<:Number,D}
+function _fit!(A::IndependentStatistic{T, D, 2}, b::AbstractArray{T, D}) where {T <: Number, D}
     wa = weights(A)
     m1 = get_rawmoments(A, 1)
     m2 = get_rawmoments(A, 2)
@@ -235,73 +230,77 @@ function _fit!(A::IndependentStatistic{T,D,2}, b::AbstractArray{T,D}) where {T<:
 end
 
 
-@generated function _fit!(A::IndependentStatistic{T,D,P}, b::AbstractArray{T,D}) where {D,P,T<:Number}
+@generated function _fit!(A::IndependentStatistic{T, D, P}, b::AbstractArray{T, D}) where {D, P, T <: Number}
     code = Expr(:block)
-    push!(code.args, quote
-        wa = copy(weights(A))
-        iN = inv.(increment_weights!(A, 1))
-        δBA = @. (b - $get_rawmoments(A, 1))
-        @. $get_rawmoments(A, 1) += iN * δBA
-        if P == 1
-            return A
+    push!(
+        code.args, quote
+            wa = copy(weights(A))
+            iN = inv.(increment_weights!(A, 1))
+            δBA = @. (b - $get_rawmoments(A, 1))
+            @. $get_rawmoments(A, 1) += iN * δBA
+            if P == 1
+                return A
+            end
         end
-    end)
+    )
     for p in P:-1:3
         push!(code.args, :(@. $get_rawmoments(A, $p) += (wa * (-iN)^$p + (wa * iN)^$p) * δBA^$p))
-        for k in 1:(p-2)
+        for k in 1:(p - 2)
             push!(code.args, :(@. $get_rawmoments(A, $p) += binomial($p, $k) * (@. $get_rawmoments(A, $p - $k) * (-δBA * iN)^$k)))
         end
     end
-    push!(code.args, quote
-        @. $get_rawmoments(A, 2) += iN * wa * abs2(δBA)
-    end)
+    push!(
+        code.args, quote
+            @. $get_rawmoments(A, 2) += iN * wa * abs2(δBA)
+        end
+    )
     push!(code.args, :(return A))
     return code
 end
 
 #=  WEIGHTED DATA =#
-fit!(A::IndependentStatistic{T}, x::AbstractArray{T2}, w) where {T,T2} = fit!(A, T.(x), w)
+fit!(A::IndependentStatistic{T}, x::AbstractArray{T2}, w) where {T, T2} = fit!(A, T.(x), w)
 
-function fit!(A::IndependentStatistic{T,N}, x::AbstractArray{T,N2}, w::W) where {T,N,N2,W<:Union{Real,AbstractArray{<:Real,N2}}}
+function fit!(A::IndependentStatistic{T, N}, x::AbstractArray{T, N2}, w::W) where {T, N, N2, W <: Union{Real, AbstractArray{<:Real, N2}}}
     N2 ≥ N || throw(ArgumentError("fit! : N2 < N"))
     if W <: AbstractArray
         size(x) == size(w) || throw(ArgumentError("IndependentStatistic : size(x) != size(w)"))
     end
 
-    dims = NTuple{N2 - N,Int}((ndims(A)+1):ndims(x))
-    for (y, z) ∈ zip(eachslice(x; dims=dims), eachslice(w; dims=dims))
+    dims = NTuple{N2 - N, Int}((ndims(A) + 1):ndims(x))
+    for (y, z) in zip(eachslice(x; dims = dims), eachslice(w; dims = dims))
         _fit!(A, reshape(y, size(A)), reshape(z, size(A)))
     end
     return A
 end
 
-function fit!(A::IndependentStatistic{T,N,K}, x::AbstractArray{T,N}, w::W) where {T,N,K,W<:Union{Real,AbstractArray{<:Real,N}}}
+function fit!(A::IndependentStatistic{T, N, K}, x::AbstractArray{T, N}, w::W) where {T, N, K, W <: Union{Real, AbstractArray{<:Real, N}}}
     if W <: AbstractArray
         size(x) == size(w) || throw(ArgumentError("IndependentStatistic : size(x) != size(w)"))
     end
-    szx = SVector{N,Int}(size(x)...)
-    szA = SVector{N,Int}(size(A)...)
+    szx = SVector{N, Int}(size(x)...)
+    szA = SVector{N, Int}(size(A)...)
 
     sgltidx = findall(szA .!= 1)
-    singleton = ones(MVector{N,Bool})
+    singleton = ones(MVector{N, Bool})
     singleton[sgltidx] .= false
 
     szA[sgltidx] == szx[sgltidx] || throw(DimensionMismatch("fit! : size(A) incompatible with size(x)"))
-    slc = NTuple{sum(singleton),Int}((1:N)[singleton])
+    slc = NTuple{sum(singleton), Int}((1:N)[singleton])
     if W <: AbstractArray
-        for (y, z) ∈ zip(eachslice(x; dims=slc), eachslice(w; dims=slc))
+        for (y, z) in zip(eachslice(x; dims = slc), eachslice(w; dims = slc))
             _fit!(A, reshape(y, szA...), reshape(z, szA...))
         end
     else
 
-        for y ∈ eachslice(x; dims=slc)
+        for y in eachslice(x; dims = slc)
             _fit!(A, reshape(y, szA...), w)
         end
     end
     return A
 end
 
-function _fit!(A::IndependentStatistic{T,D,1}, b::AbstractArray{T,D}, wb::W) where {D,T<:Real,W<:Union{Real,AbstractArray{<:Real,D}}}
+function _fit!(A::IndependentStatistic{T, D, 1}, b::AbstractArray{T, D}, wb::W) where {D, T <: Real, W <: Union{Real, AbstractArray{<:Real, D}}}
 
     wa = weights(A)
     m1 = get_rawmoments(A, 1)
@@ -333,27 +332,33 @@ function _fit!(A::IndependentStatistic{T,D,1}, b::AbstractArray{T,D}, wb::W) whe
     return A
 end
 
-@generated function _fit!(A::I, b::AbstractArray{T,D}, wb::W) where {P,D,T<:Real,I<:IndependentStatistic{T,D,P},W<:Union{Real,AbstractArray{<:Real,D}}}
+@generated function _fit!(A::I, b::AbstractArray{T, D}, wb::W) where {P, D, T <: Real, I <: IndependentStatistic{T, D, P}, W <: Union{Real, AbstractArray{<:Real, D}}}
     code = Expr(:block)
     if W <: AbstractArray
-        push!(code.args, quote
-            size(b) == size(wb) || throw(ArgumentError("IndependentStatistic : size(b) != size(wb)"))
-        end)
+        push!(
+            code.args, quote
+                size(b) == size(wb) || throw(ArgumentError("IndependentStatistic : size(b) != size(wb)"))
+            end
+        )
         WBI = :(wb[i])
     else
-        push!(code.args, quote
-            wb < 0 && throw(ArgumentError("weights can't be negative"))
-            wb == 0 && return A
-        end)
+        push!(
+            code.args, quote
+                wb < 0 && throw(ArgumentError("weights can't be negative"))
+                wb == 0 && return A
+            end
+        )
         WBI = :(wb)
     end
-    push!(code.args, quote
-        P > 1 || throw(ArgumentError("P must be greater than 1"))
-        nonnegative(wb) || throw(ArgumentError("weights can't be negative"))
-        wb == 0 && return A
-        wa = weights(A)
-        m1 = get_rawmoments(A, 1)
-    end)
+    push!(
+        code.args, quote
+            P > 1 || throw(ArgumentError("P must be greater than 1"))
+            nonnegative(wb) || throw(ArgumentError("weights can't be negative"))
+            wb == 0 && return A
+            wa = weights(A)
+            m1 = get_rawmoments(A, 1)
+        end
+    )
     if I.parameters[5].parameters[1] <: MutableUniformArray
         W == Real && push!(code.args, :(throw(ArgumentError("MutableUniformArray not supported for non scalar weights"))))
         push!(code.args, :(MWAI = first(wa)))
@@ -366,21 +371,23 @@ end
         NI = :(ifelse($WBI == 0, 0, inv(wa[i] + $WBI)))
         waupdate = :(wa[i] += $WBI)
     end
-    push!(code.args, quote
-        @inbounds @simd for i in eachindex(m1, b)
-            iN = $NI
-            $WAI
-            wbi = $WBI
-            δBA = (b[i] - m1[i])
-            BoN = -$WBI * iN * δBA
-            m1[i] -= BoN
-            AoN = wai * iN * δBA
-            $(MomentsExpression(P))
-            get_rawmoments(A, 2)[i] += wai * abs2(BoN) + wbi * abs2(AoN)
-            $waupdate
+    push!(
+        code.args, quote
+            @inbounds @simd for i in eachindex(m1, b)
+                iN = $NI
+                $WAI
+                wbi = $WBI
+                δBA = (b[i] - m1[i])
+                BoN = -$WBI * iN * δBA
+                m1[i] -= BoN
+                AoN = wai * iN * δBA
+                $(MomentsExpression(P))
+                get_rawmoments(A, 2)[i] += wai * abs2(BoN) + wbi * abs2(AoN)
+                $waupdate
+            end
+            return A
         end
-        return A
-    end)
+    )
 
     return code
 end
@@ -392,7 +399,7 @@ function MomentsExpression(P::Int)
     end
     for p in P:-1:3
         push!(code.args, :(get_rawmoments(A, $p)[i] += wai * BoN^$p + wbi * AoN^$p))
-        for k in 1:(p-2)
+        for k in 1:(p - 2)
             push!(code.args, :(get_rawmoments(A, $p)[i] += binomial($p, $k) * get_rawmoments(A, $p - $k)[i] * BoN^$k))
         end
     end

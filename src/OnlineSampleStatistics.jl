@@ -18,7 +18,6 @@ import OnlineStatsBase: value, _fit!, _merge!
 import StatsBase: fit!, nobs, mean, var, std, skewness, kurtosis, weights
 
 
-
 include("UnivariateStatistics.jl")
 include("IndependantStatistics.jl")
 

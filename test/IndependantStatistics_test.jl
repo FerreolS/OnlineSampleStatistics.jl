@@ -26,7 +26,7 @@ using ZippedArrays, StructuredArrays
         fit!(A, data)
         @test A == IndependentStatistic(data, 5)
         @test @inferred(order(A)) == 5
-        B = [UnivariateStatistic(d, 5) for d ∈ data]
+        B = [UnivariateStatistic(d, 5) for d in data]
         @test @inferred(order(B)) == 5
         @test A == B
         @test @inferred(get_rawmoments(A, 1)) == @inferred(get_rawmoments(B, 1))
@@ -37,7 +37,7 @@ using ZippedArrays, StructuredArrays
         @test @inferred(mean(A)) == data
 
         @inferred(fit!(A, -1 .* data))
-        @test @inferred(var(A; corrected=false)) == data .^ 2
+        @test @inferred(var(A; corrected = false)) == data .^ 2
         @test @inferred(var(A)) == 2 .* data .^ 2
         @test @inferred(skewness(A)) == zeros(Float64, 3, 3)
         @test @inferred(kurtosis(A)) == -2.0 * ones(3, 3)
@@ -45,7 +45,7 @@ using ZippedArrays, StructuredArrays
         @test @inferred(kurtosis(A)) ≈ kurtosis.(A)
         @test @inferred(skewness(A)) ≈ skewness.(A)
         @test @inferred(mean(A)) ≈ mean.(A)
-        @test @inferred(var(A; corrected=false)) ≈ var.(A; corrected=false)
+        @test @inferred(var(A; corrected = false)) ≈ var.(A; corrected = false)
 
         C = IndependentStatistic(data, trues(size(data)...), 5)
         @test @inferred(mean(C)) ≈ data
@@ -58,31 +58,30 @@ using ZippedArrays, StructuredArrays
         B = IndependentStatistic(Float64, sz, Int, 1)
         fit!(A, x)
         fit!(B, x)
-        @test mean(A) ≈ dropdims(mean(x; dims=3), dims=3)
-        @test mean(B) ≈ dropdims(mean(x; dims=3), dims=3)
+        @test mean(A) ≈ dropdims(mean(x; dims = 3), dims = 3)
+        @test mean(B) ≈ dropdims(mean(x; dims = 3), dims = 3)
 
         A = IndependentStatistic(sz, 2)
         B = IndependentStatistic(Float64, sz, Int, 2)
         fit!(A, x)
         fit!(B, x)
-        @test mean(A) ≈ dropdims(mean(x; dims=3), dims=3)
-        @test mean(B) ≈ dropdims(mean(x; dims=3), dims=3)
-        @test var(A) ≈ dropdims(var(x; dims=3), dims=3)
-        @test var(B) ≈ dropdims(var(x; dims=3), dims=3)
+        @test mean(A) ≈ dropdims(mean(x; dims = 3), dims = 3)
+        @test mean(B) ≈ dropdims(mean(x; dims = 3), dims = 3)
+        @test var(A) ≈ dropdims(var(x; dims = 3), dims = 3)
+        @test var(B) ≈ dropdims(var(x; dims = 3), dims = 3)
 
         A = IndependentStatistic(sz, 4)
         B = IndependentStatistic(Float64, sz, Int, 4)
         fit!(A, x)
         fit!(B, x)
-        @test mean(A) ≈ dropdims(mean(x; dims=3), dims=3)
-        @test mean(B) ≈ dropdims(mean(x; dims=3), dims=3)
-        @test var(A) ≈ dropdims(var(x; dims=3), dims=3)
-        @test var(B) ≈ dropdims(var(x; dims=3), dims=3)
-        @test skewness(A) ≈ dropdims(mapslices(skewness, x; dims=3), dims=3)
-        @test skewness(B) ≈ dropdims(mapslices(skewness, x; dims=3), dims=3)
-        @test kurtosis(A) ≈ dropdims(mapslices(kurtosis, x; dims=3), dims=3)
-        @test kurtosis(B) ≈ dropdims(mapslices(kurtosis, x; dims=3), dims=3)
-
+        @test mean(A) ≈ dropdims(mean(x; dims = 3), dims = 3)
+        @test mean(B) ≈ dropdims(mean(x; dims = 3), dims = 3)
+        @test var(A) ≈ dropdims(var(x; dims = 3), dims = 3)
+        @test var(B) ≈ dropdims(var(x; dims = 3), dims = 3)
+        @test skewness(A) ≈ dropdims(mapslices(skewness, x; dims = 3), dims = 3)
+        @test skewness(B) ≈ dropdims(mapslices(skewness, x; dims = 3), dims = 3)
+        @test kurtosis(A) ≈ dropdims(mapslices(kurtosis, x; dims = 3), dims = 3)
+        @test kurtosis(B) ≈ dropdims(mapslices(kurtosis, x; dims = 3), dims = 3)
 
 
     end
@@ -102,29 +101,29 @@ using ZippedArrays, StructuredArrays
 
 
         dims = 3
-        A = IndependentStatistic(x, trues(size(x)...), 2; dims=dims)
-        B = IndependentStatistic(x, 2; dims=dims)
+        A = IndependentStatistic(x, trues(size(x)...), 2; dims = dims)
+        B = IndependentStatistic(x, 2; dims = dims)
         @test @inferred(weights(A)) == @inferred(weights(B))
         @test @inferred(nobs(A)) == @inferred(nobs(B))
         @test @inferred(mean(A)) == mean(B)
-        @test @inferred(var(A, corrected=false)) == var(B, corrected=false)
+        @test @inferred(var(A, corrected = false)) == var(B, corrected = false)
 
 
         w = (rand(size(x)...) .> 0.1)
-        A = IndependentStatistic(x, w, 2; dims=dims)
+        A = IndependentStatistic(x, w, 2; dims = dims)
 
-        @test mean(A) ≈ sum(w .* x; dims=dims) ./ sum(w; dims=dims)
-        @test var(A; corrected=false) ≈ sum(w .* (x .- mean(A)) .^ 2; dims=dims) ./ sum(w; dims=dims)
+        @test mean(A) ≈ sum(w .* x; dims = dims) ./ sum(w; dims = dims)
+        @test var(A; corrected = false) ≈ sum(w .* (x .- mean(A)) .^ 2; dims = dims) ./ sum(w; dims = dims)
 
         B = IndependentStatistic(Float64, size(A)[1:2], Int, 2)
         fit!(B, x, w)
-        @test @inferred(dropdims(weights(A); dims=3)) == @inferred(weights(B))
-        @test @inferred(dropdims(nobs(A); dims=3)) == @inferred(nobs(B))
-        @test @inferred(dropdims(mean(A); dims=3)) == mean(B)
+        @test @inferred(dropdims(weights(A); dims = 3)) == @inferred(weights(B))
+        @test @inferred(dropdims(nobs(A); dims = 3)) == @inferred(nobs(B))
+        @test @inferred(dropdims(mean(A); dims = 3)) == mean(B)
 
         A = IndependentStatistic(Float64, size(A), Float64, 1)
         @inferred fit!(A, Float32.(x), w)
-        @test nobs(A) ≈ sum(w, dims=dims)
+        @test nobs(A) ≈ sum(w, dims = dims)
 
         A = IndependentStatistic(Float64, size(A), Float64, 1)
         @inferred fit!(A, x, 1)

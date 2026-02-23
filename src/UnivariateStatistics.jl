@@ -18,19 +18,19 @@ fit!(A, 4.0)  # Add a new data point
 ```
 """
 
-mutable struct UnivariateStatistic{T,K,I,R} <: OnlineStatsBase.OnlineStat{T}
+mutable struct UnivariateStatistic{T, K, I, R} <: OnlineStatsBase.OnlineStat{T}
     weights::I
     rawmoments::R
     @doc "Inner constructor rawmoments can be given as a vector or a NTuple"
-    function UnivariateStatistic{T,K,I}(weights::I, rawmoments::Vector{T}) where {T,K,I}
+    function UnivariateStatistic{T, K, I}(weights::I, rawmoments::Vector{T}) where {T, K, I}
         K == length(rawmoments) || throw(ArgumentError("The length of rawmoments $(length(rawmoments)) must be equal to $K"))
         nonnegative(weights) || throw(ArgumentError("weights can't be negative"))
-        new{T,K,I,typeof(rawmoments)}(weights, rawmoments)
+        return new{T, K, I, typeof(rawmoments)}(weights, rawmoments)
     end
-    function UnivariateStatistic{T,K,I}(weights::I, rawmoments::NTuple{K,T}) where {T,K,I}
+    function UnivariateStatistic{T, K, I}(weights::I, rawmoments::NTuple{K, T}) where {T, K, I}
         nonnegative(weights) || throw(ArgumentError("weights can't be negative"))
         r = vcat(rawmoments...)
-        new{T,K,I,typeof(r)}(weights, r)
+        return new{T, K, I, typeof(r)}(weights, r)
     end
 
 end
@@ -63,12 +63,12 @@ Constructs a `UnivariateStatistic` object  of type `T` with a single sample `x`.
 `x`will be converted to type `T` is needed.
 
 """
-UnivariateStatistic(x::T, K::Int) where {T<:AbstractFloat} = UnivariateStatistic(x, 1, K)
-UnivariateStatistic(x::T, K::Int) where {T<:Number} = UnivariateStatistic(Float64(x), 1, K)
+UnivariateStatistic(x::T, K::Int) where {T <: AbstractFloat} = UnivariateStatistic(x, 1, K)
+UnivariateStatistic(x::T, K::Int) where {T <: Number} = UnivariateStatistic(Float64(x), 1, K)
 UnivariateStatistic(T::Type, K::Int) = UnivariateStatistic(T, Int, K)
 UnivariateStatistic(K::Int) = UnivariateStatistic(Float64, K)
 UnivariateStatistic(::Type{T}, x, K::Int) where {T} = UnivariateStatistic(T.(x), K)
-UnivariateStatistic(x::AbstractArray{T}, K::Int) where {T<:Number} = UnivariateStatistic(Float64.(x), 1, K)
+UnivariateStatistic(x::AbstractArray{T}, K::Int) where {T <: Number} = UnivariateStatistic(Float64.(x), 1, K)
 
 """
     UnivariateStatistic(K::Int, x::AbstractArray{T}) where {T<:Number}
@@ -76,7 +76,7 @@ UnivariateStatistic(x::AbstractArray{T}, K::Int) where {T<:Number} = UnivariateS
 Constructs a UnivariateStatistic object storing the first `K` moments  from the vector of samples `x`.
 
 """
-function UnivariateStatistic(x::AbstractArray{T}, K::Int) where {T<:Union{AbstractFloat,Complex}}
+function UnivariateStatistic(x::AbstractArray{T}, K::Int) where {T <: Union{AbstractFloat, Complex}}
     K > 0 || throw(ArgumentError("Moment of order $K <= 0 undefined"))
     !(T <: Complex) || K < 3 || throw(ArgumentError("UnivariateStatistic : $K > 2 not implemented for complex numbers"))
     A = UnivariateStatistic(T, K)
@@ -92,12 +92,12 @@ The `weights` is the sum of weights of the samples that were used to construct `
 .
 """
 
-function UnivariateStatistic(weights::I, rawmoments::Vector{T}) where {T,I}
+function UnivariateStatistic(weights::I, rawmoments::Vector{T}) where {T, I}
     K = length(rawmoments)
-    UnivariateStatistic{T,K,I}(weights, rawmoments)
+    return UnivariateStatistic{T, K, I}(weights, rawmoments)
 end
 
-UnivariateStatistic{T,K,I}(weights::I, rawmoments...) where {T,K,I} = UnivariateStatistic{T,K,I}(weights, rawmoments)
+UnivariateStatistic{T, K, I}(weights::I, rawmoments...) where {T, K, I} = UnivariateStatistic{T, K, I}(weights, rawmoments)
 #UnivariateStatistic{T,K,I}(weights::I, rawmoments...) where {T,K,I} = UnivariateStatistic{T,K,I}(weights, vcat(rawmoments...))
 
 """
@@ -106,9 +106,9 @@ UnivariateStatistic{T,K,I}(weights::I, rawmoments...) where {T,K,I} = Univariate
 Constructs a `UnivariateStatistic` object with `K` moments of type `T` from a single sample `x` and a weight `weight`.
 The first moment (the mean) is then `x` and the remaining moments are zeros of type `T`.
 """
-function UnivariateStatistic(x::T, weight::Number, K::Int) where {T<:Number}
+function UnivariateStatistic(x::T, weight::Number, K::Int) where {T <: Number}
     K > 0 || throw(ArgumentError("Moment of order $K <= 0 undefined"))
-    UnivariateStatistic(weight, vcat(x, zeros(T, K - 1)))
+    return UnivariateStatistic(weight, vcat(x, zeros(T, K - 1)))
 end
 """
     UnivariateStatistic(T::Type, TW::Type, K::Int)
@@ -120,9 +120,9 @@ UnivariateStatistic(T::Type, TW::Type, K::Int) = UnivariateStatistic(zero(TW), z
     UnivariateStatistic(x::AbstractArray{T}, w::AbstractArray, K::Int) where {T<:Number}      
 Constructs a `UnivariateStatistic` object of type `T` with `K` moments from a vector of samples `x` and a vector of weights `w`.
 """
-UnivariateStatistic(x::AbstractArray{T}, w::AbstractArray, K::Int) where {T<:Number} = UnivariateStatistic(Float64.(x), w, K)
+UnivariateStatistic(x::AbstractArray{T}, w::AbstractArray, K::Int) where {T <: Number} = UnivariateStatistic(Float64.(x), w, K)
 
-function UnivariateStatistic(x::AbstractArray{T}, w::AbstractArray{TW}, K::Int) where {T<:Union{AbstractFloat,Complex},TW<:Number}
+function UnivariateStatistic(x::AbstractArray{T}, w::AbstractArray{TW}, K::Int) where {T <: Union{AbstractFloat, Complex}, TW <: Number}
 
     size(x) == size(w) || throw(ArgumentError("UnivariateStatistic : size(x) != size(w)"))
     K > 0 || throw(ArgumentError("Moment of order $K <= 0 undefined"))
@@ -152,8 +152,8 @@ nonnegative(x::AbstractArray) = all(x .>= 0)
 
     return an empty UnivariateStatistic of type `T` with `K` moments and weights of type `I`.
 """
-Base.zero(::T) where {T<:UnivariateStatistic} = zero(T)
-Base.zero(::Type{UnivariateStatistic{T,K,I,L}}) where {T,K,I,L} = UnivariateStatistic(zero(I), zeros(T, K))
+Base.zero(::T) where {T <: UnivariateStatistic} = zero(T)
+Base.zero(::Type{UnivariateStatistic{T, K, I, L}}) where {T, K, I, L} = UnivariateStatistic(zero(I), zeros(T, K))
 
 """
     empty!(A::UnivariateStatistic)
@@ -176,8 +176,8 @@ end
 Base.eltype(::UnivariateStatistic{T}) where {T} = T
 
 
-Base.:(==)(A::UnivariateStatistic{T,K,I}, B::UnivariateStatistic{T,K,I}) where {T,K,I} = A.rawmoments == B.rawmoments && A.weights == B.weights
-Base.isapprox(A::UnivariateStatistic{T,K,I}, B::UnivariateStatistic{T,K,I}; kwds...) where {T,K,I} = isapprox(A.rawmoments, B.rawmoments; kwds...) && isapprox(A.weights, B.weights; kwds...)
+Base.:(==)(A::UnivariateStatistic{T, K, I}, B::UnivariateStatistic{T, K, I}) where {T, K, I} = A.rawmoments == B.rawmoments && A.weights == B.weights
+Base.isapprox(A::UnivariateStatistic{T, K, I}, B::UnivariateStatistic{T, K, I}; kwds...) where {T, K, I} = isapprox(A.rawmoments, B.rawmoments; kwds...) && isapprox(A.weights, B.weights; kwds...)
 """ 
     copy(A::UnivariateStatistic)
    Copy  (deepcopy) the UnivariateStatistic `A` to a new object.
@@ -194,16 +194,16 @@ StatsBase.nobs(A::UnivariateStatistic) = A.weights
     weights(A::UnivariateStatistic)
 Return the sum of weights in a `A`.
 """
-StatsBase.weights(A::UnivariateStatistic{T,K,W}) where {T,K,W<:Number} = A.weights
+StatsBase.weights(A::UnivariateStatistic{T, K, W}) where {T, K, W <: Number} = A.weights
 
 """"
     order(A::UnivariateStatistic)
 Return the number of moments in a `A`.
 """
-order(::UnivariateStatistic{T,K}) where {T,K} = K
+order(::UnivariateStatistic{T, K}) where {T, K} = K
 
 
-function get_rawmoments(A::UnivariateStatistic{T,K,I}, k::Int) where {T,K,I}
+function get_rawmoments(A::UnivariateStatistic{T, K, I}, k::Int) where {T, K, I}
     k ≤ K || throw(ArgumentError("$k moments are not available for type $(typeof(A))"))
     return A.rawmoments[k]
 end
@@ -214,15 +214,15 @@ end
 Compute the k-th moment of a UnivariateStatistic `A`. 
 
 """
-get_moments(A::UnivariateStatistic{T,K,I,R}, k) where {T,K,I,R} = ifelse((N = weights(A)) == 0, T(0), get_rawmoments(A, k) / ifelse(k == 1, T(1), T(N)))
-get_moments(A::UnivariateStatistic{T,K,I,R}) where {T,K,I,R} = [get_moments(A, k) for k in 1:K]
+get_moments(A::UnivariateStatistic{T, K, I, R}, k) where {T, K, I, R} = ifelse((N = weights(A)) == 0, T(0), get_rawmoments(A, k) / ifelse(k == 1, T(1), T(N)))
+get_moments(A::UnivariateStatistic{T, K, I, R}) where {T, K, I, R} = [get_moments(A, k) for k in 1:K]
 
 """
     mean(A::UnivariateStatistic) 
 
 Compute the sample mean of a  `A` 
 """
-Statistics.mean(A::UnivariateStatistic{T,K,I,R}) where {T,K,I,R} = get_moments(A, 1)
+Statistics.mean(A::UnivariateStatistic{T, K, I, R}) where {T, K, I, R} = get_moments(A, 1)
 
 """
     var(A::UnivariateStatistic; corrected=true)
@@ -231,7 +231,7 @@ Compute the sample variance of a `A`.  If `corrected` is true, the variance is c
 The unbias variance estimator is only available for an integer number of sample.
 
 """
-function Statistics.var(A::UnivariateStatistic{T,K,W}; corrected=true) where {T,K,W}
+function Statistics.var(A::UnivariateStatistic{T, K, W}; corrected = true) where {T, K, W}
     N = nobs(A)
     N == 0 && return T(NaN)
     if corrected
@@ -258,7 +258,7 @@ Statistics.std(A::UnivariateStatistic) = sqrt(var(A))
 Compute the sample skewness of a `A`. The skewness is defined as the third standardized moment.
 """
 
-function StatsBase.skewness(A::UnivariateStatistic{T,K,Int}) where {T,K}
+function StatsBase.skewness(A::UnivariateStatistic{T, K, Int}) where {T, K}
     3 ≤ K || throw(ArgumentError("third moment is not available for type $(typeof(A))"))
     N = nobs(A)
     N < 2 && return T(NaN)
@@ -272,7 +272,7 @@ end
 Compute the sample kurtosis of a `A`. The kurtosis is defined as the fourth standardized moment.
 """
 
-function StatsBase.kurtosis(A::UnivariateStatistic{T,K,Int}) where {T,K}
+function StatsBase.kurtosis(A::UnivariateStatistic{T, K, Int}) where {T, K}
     3 ≤ K || throw(ArgumentError("third moment is not available for type $(typeof(A))"))
     N = nobs(A)
     N < 2 && return T(NaN)
@@ -292,25 +292,25 @@ Pushes a new samples `y` into the UnivariateStatistic `A`.
 - `ArgumentError`: If the type of elements in `y` is not compatible with the type `T` of `A`.
 
 """
-function fit!(A::UnivariateStatistic{T}, y::AbstractArray{T2}) where {T,T2<:Number}
+function fit!(A::UnivariateStatistic{T}, y::AbstractArray{T2}) where {T, T2 <: Number}
     T == eltype(y) || promote_type(T, eltype(y)) == T || throw(ArgumentError("The input for $(typeof(A)) is $T. Found $T2."))
     fit!(A, T.(y))
     return A
 end
 
-fit!(A::UnivariateStatistic{T}, y::AbstractArray{T}) where {T<:Number} = foreach(x -> _fit!(A, x), y)
+fit!(A::UnivariateStatistic{T}, y::AbstractArray{T}) where {T <: Number} = foreach(x -> _fit!(A, x), y)
 
-function fit!(A::UnivariateStatistic{T}, y::AbstractArray{T2}, w) where {T,T2<:Number}
+function fit!(A::UnivariateStatistic{T}, y::AbstractArray{T2}, w) where {T, T2 <: Number}
     T == eltype(y) || promote_type(T, eltype(y)) == T || throw(ArgumentError("The input for $(typeof(A)) is $T. Found $T2."))
-    fit!(A, T.(y), w)
+    return fit!(A, T.(y), w)
 end
 
-function fit!(A::UnivariateStatistic{T}, y::AbstractArray{T}, w::AbstractArray) where {T<:Number}
+function fit!(A::UnivariateStatistic{T}, y::AbstractArray{T}, w::AbstractArray) where {T <: Number}
     size(y) == size(w) || throw(ArgumentError("UnivariateStatistic : size(y) != size(w)"))
-    fit!(A, zip(y, w))
+    return fit!(A, zip(y, w))
 end
 
-function fit!(A::UnivariateStatistic{T}, y::AbstractArray{T}, w::Real) where {T<:Number}
+function fit!(A::UnivariateStatistic{T}, y::AbstractArray{T}, w::Real) where {T <: Number}
     if (w == 1)
         foreach(x -> _fit!(A, x), y)
     else
@@ -320,25 +320,25 @@ function fit!(A::UnivariateStatistic{T}, y::AbstractArray{T}, w::Real) where {T<
 end
 
 
-function fit!(A::UnivariateStatistic{T}, b::T2, w::Real) where {T<:Number,T2<:Number}
+function fit!(A::UnivariateStatistic{T}, b::T2, w::Real) where {T <: Number, T2 <: Number}
     promote_type(T, T2) == T || throw(ArgumentError("The input type $T2 is not promotable to $T"))
-    _fit!(A, T(b), w)
+    return _fit!(A, T(b), w)
 end
 
-fit!(o::UnivariateStatistic{T}, y::Tuple{T,<:Real}) where {T} = _fit!(o, y...)
+fit!(o::UnivariateStatistic{T}, y::Tuple{T, <:Real}) where {T} = _fit!(o, y...)
 
 @inline increment_weights!(A::UnivariateStatistic, x) = A.weights += x
 
 #= NOT WEIGHTED DATA =#
 
-function _fit!(A::UnivariateStatistic{T,1}, b::T) where {T<:Number}
+function _fit!(A::UnivariateStatistic{T, 1}, b::T) where {T <: Number}
     μA, = A.rawmoments
     A.rawmoments[1] += inv(A.weights += 1) * (b - μA)
     return A
 end
 
 
-function _fit!(A::UnivariateStatistic{T,2}, b::T) where {T<:Number}
+function _fit!(A::UnivariateStatistic{T, 2}, b::T) where {T <: Number}
     NA = weights(A)
     iN = inv(increment_weights!(A, 1))
     μA, = A.rawmoments
@@ -350,25 +350,29 @@ function _fit!(A::UnivariateStatistic{T,2}, b::T) where {T<:Number}
 end
 
 
-@generated function _fit!(A::UnivariateStatistic{T,P,Int}, b::T) where {P,T<:Number}
+@generated function _fit!(A::UnivariateStatistic{T, P, Int}, b::T) where {P, T <: Number}
     code = Expr(:block)
-    push!(code.args, quote
-        NA = weights(A)
-        N = NA + 1
-        iN = inv(increment_weights!(A, 1))
-        μA, = A.rawmoments
-        δBA = (b - μA)
-    end)
+    push!(
+        code.args, quote
+            NA = weights(A)
+            N = NA + 1
+            iN = inv(increment_weights!(A, 1))
+            μA, = A.rawmoments
+            δBA = (b - μA)
+        end
+    )
     for p in P:-1:3
         push!(code.args, :(A.rawmoments[$p] += (NA * (-iN)^$p + (NA * iN)^$p) * δBA^$p))
-        for k in 1:(p-2)
-            push!(code.args, :(A.rawmoments[$p] += binomial($p, $k) * (A.rawmoments[$p-$k] * (-δBA * iN)^$k)))
+        for k in 1:(p - 2)
+            push!(code.args, :(A.rawmoments[$p] += binomial($p, $k) * (A.rawmoments[$p - $k] * (-δBA * iN)^$k)))
         end
     end
-    push!(code.args, quote
-        A.rawmoments[1] += iN * δBA
-        A.rawmoments[2] += iN * NA * δBA^2
-    end)
+    push!(
+        code.args, quote
+            A.rawmoments[1] += iN * δBA
+            A.rawmoments[2] += iN * NA * δBA^2
+        end
+    )
     push!(code.args, :(return A))
     return code
 end
@@ -376,14 +380,14 @@ end
 
 #= WEIGHTED DATA =#
 
-function _fit!(A::UnivariateStatistic{T,1}, b::T, w::Real) where {T<:Number}
+function _fit!(A::UnivariateStatistic{T, 1}, b::T, w::Real) where {T <: Number}
     w == 0 && return A
     A.rawmoments[1] += w * inv(increment_weights!(A, w)) * (b - A.rawmoments[1])
     return A
 end
 
 
-function _fit!(A::UnivariateStatistic{T,2}, b::T, wb::Real) where {T<:Number}
+function _fit!(A::UnivariateStatistic{T, 2}, b::T, wb::Real) where {T <: Number}
     wb == 0 && return A
     wa = weights(A)
     μA, _ = A.rawmoments
@@ -398,29 +402,33 @@ function _fit!(A::UnivariateStatistic{T,2}, b::T, wb::Real) where {T<:Number}
     return A
 end
 
-@generated function _fit!(A::UnivariateStatistic{T,P}, b::T, wb::Real) where {P,T<:Number}
+@generated function _fit!(A::UnivariateStatistic{T, P}, b::T, wb::Real) where {P, T <: Number}
     code = Expr(:block)
-    push!(code.args, quote
-        wb == 0 && return A
-        wa = weights(A)
-        iN = inv(increment_weights!(A, wb))
-        δBA = (b - A.rawmoments[1])
-        BoN = -wb * iN * δBA
-        A.rawmoments[1] -= BoN
-        if P == 1
-            return A
+    push!(
+        code.args, quote
+            wb == 0 && return A
+            wa = weights(A)
+            iN = inv(increment_weights!(A, wb))
+            δBA = (b - A.rawmoments[1])
+            BoN = -wb * iN * δBA
+            A.rawmoments[1] -= BoN
+            if P == 1
+                return A
+            end
+            AoN = wa * iN * δBA
         end
-        AoN = wa * iN * δBA
-    end)
+    )
     for p in P:-1:3
         push!(code.args, :(A.rawmoments[$p] += wa * BoN^$p + wb * AoN^$p))
-        for k in 1:(p-2)
-            push!(code.args, :(A.rawmoments[$p] += binomial($p, $k) * (A.rawmoments[$p-$k] * BoN^$k)))
+        for k in 1:(p - 2)
+            push!(code.args, :(A.rawmoments[$p] += binomial($p, $k) * (A.rawmoments[$p - $k] * BoN^$k)))
         end
     end
-    push!(code.args, quote
-        A.rawmoments[2] += wa * abs2(BoN) + wb * abs2(AoN)
-    end)
+    push!(
+        code.args, quote
+            A.rawmoments[2] += wa * abs2(BoN) + wb * abs2(AoN)
+        end
+    )
     push!(code.args, :(return A))
     return code
 end
@@ -443,7 +451,7 @@ UnivariateStatistic: n=4 | value=[1.5, 0.75]
 ```
 """
 
-function Base.merge(A::UnivariateStatistic{T1,1}, B::UnivariateStatistic{T2,K}) where {T1,T2,K}
+function Base.merge(A::UnivariateStatistic{T1, 1}, B::UnivariateStatistic{T2, K}) where {T1, T2, K}
     T = promote_type(T1, T2)
     if T == T1
         C = copy(A)
@@ -471,14 +479,14 @@ merge!(A, B)
 A ≈ UnivariateStatistic(2, [1.0, 0.5, 2.0, 1.5])
 ```
 """
-function Base.merge!(A::UnivariateStatistic{T1,1,I}, B::UnivariateStatistic{T2,K,I}) where {T1,T2,K,I}
+function Base.merge!(A::UnivariateStatistic{T1, 1, I}, B::UnivariateStatistic{T2, K, I}) where {T1, T2, K, I}
     promote_type(T1, T2) == T1 || throw(ArgumentError("The input for $(typeof(A)) is $T. Found $(eltype(B))."))
     A.weights += B.weights
     A.rawmoments[1] += inv(A.weights) * B.weights * (B.rawmoments[1] - A.rawmoments[1])
     return A
 end
 
-function Base.merge!(A::UnivariateStatistic{T1,2,I}, B::UnivariateStatistic{T2,2,I}) where {T1,T2,I}
+function Base.merge!(A::UnivariateStatistic{T1, 2, I}, B::UnivariateStatistic{T2, 2, I}) where {T1, T2, I}
     promote_type(T1, T2) == T1 || throw(ArgumentError("The input for $(typeof(A)) is $T. Found $(eltype(B))."))
     (wb = weights(B)) == 0 && return A
     wa = weights(A)
@@ -496,32 +504,36 @@ function Base.merge!(A::UnivariateStatistic{T1,2,I}, B::UnivariateStatistic{T2,2
 end
 
 
-@generated function Base.merge!(A::UnivariateStatistic{T,P}, B::UnivariateStatistic{T,M}) where {T,M,P}
+@generated function Base.merge!(A::UnivariateStatistic{T, P}, B::UnivariateStatistic{T, M}) where {T, M, P}
     P ≤ M || throw(ArgumentError("The number of moment $M of the second Arguments is less than the first $P."))
     code = Expr(:block)
-    push!(code.args, quote
-        (wb = weights(B)) == 0 && return A
-        wa = weights(A)
-        iN = inv(increment_weights!(A, wb))
-        μA = A.rawmoments[1]
-        μB, MB = B.rawmoments[1:2]
-        δBA = (μB - μA)
-        BoN = -wb * iN * δBA
-        AoN = wa * iN * δBA
+    push!(
+        code.args, quote
+            (wb = weights(B)) == 0 && return A
+            wa = weights(A)
+            iN = inv(increment_weights!(A, wb))
+            μA = A.rawmoments[1]
+            μB, MB = B.rawmoments[1:2]
+            δBA = (μB - μA)
+            BoN = -wb * iN * δBA
+            AoN = wa * iN * δBA
 
-        BoN = -iN * wb * δBA
-        AoN = iN * wa * δBA
-    end)
+            BoN = -iN * wb * δBA
+            AoN = iN * wa * δBA
+        end
+    )
     for p in P:-1:3
-        for k in 1:(p-2)
-            push!(code.args, :(A.rawmoments[$p] += binomial($p, $k) * (BoN^$k * A.rawmoments[$p-$k] + AoN^$k * B.rawmoments[$p-$k])))
+        for k in 1:(p - 2)
+            push!(code.args, :(A.rawmoments[$p] += binomial($p, $k) * (BoN^$k * A.rawmoments[$p - $k] + AoN^$k * B.rawmoments[$p - $k])))
         end
         push!(code.args, :(A.rawmoments[$p] += B.rawmoments[$p] + wa * BoN^$p + wb * AoN^$p))
     end
-    push!(code.args, quote
-        A.rawmoments[1] -= BoN
-        A.rawmoments[2] += MB + wa * abs2(BoN) + wb * abs2(AoN)
-    end)
+    push!(
+        code.args, quote
+            A.rawmoments[1] -= BoN
+            A.rawmoments[2] += MB + wa * abs2(BoN) + wb * abs2(AoN)
+        end
+    )
     push!(code.args, :(return A))
     return code
 end
