@@ -53,6 +53,9 @@ function Base.show(io::IO, ::MIME"text/plain", A::UnivariateStatistic{T, K, I}) 
     return
 end
 
+# Compact display for REPL and inline use
+Base.show(io::IO, A::UnivariateStatistic) = Base.summary(io, A)
+
 # One-line summary for compact listings (e.g. varinfo)
 """
     summary(A::UnivariateStatistic)
@@ -90,5 +93,8 @@ end
 Return a compact one-line summary of the statistic.
 """
 function Base.summary(io::IO, A::IndependentStatistic{T, N, K, I}) where {T, N, K, I}
-    return println(io, "$(Base.dims2string(size(A))) IndependentStatistic{$T, $N, $K, $I} with $K moments")
+    return print(io, "$(Base.dims2string(size(A))) IndependentStatistic{$T, $N, $K, $I} with $K moments")
 end
+
+# Compact display for REPL and inline use
+Base.show(io::IO, A::IndependentStatistic) = Base.summary(io, A)
