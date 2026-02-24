@@ -65,34 +65,21 @@ fit!(stat, [2.0, 3.0, 4.0], [1.0, 2.0, 3.0])  # array of samples with weights
 julia> using OnlineSampleStatistics
 
 julia> A = UnivariateStatistic(4)
-UnivariateStatistic{Float64,4}(n=0)
+UnivariateStatistic{Float64, 4, Int64} with 4 moments
+  nobs: 0
 
 julia> fit!(A, randn(100));
 
 julia> A  # display with computed statistics
-UnivariateStatistic{Float64, 4, Int64}
-  n: 100
-  μ: 0.107
-  σ²: 0.977  σ: 0.994
-  skewness: 0.131
-  kurtosis: -0.179
+UnivariateStatistic{Float64, 4, Int64} with 4 moments
+  nobs: 100
+  μ: -0.017880182653312513
+  σ²: 0.8035138122170292  σ: 0.9009051633499137
+  skewness: 0.016842291132359345
+  kurtosis: -0.8677423250519558
 
 julia> summary(A)  # detailed summary
-UnivariateStatistic Summary
-==========================
-Observations: 100
-Element type: Float64
-Weight type:  Int64
-Moments:      4
-
-Statistics:
-  mean          = 0.1071112231496177
-  variance      = 0.9773843286491352
-  std           = 0.9936080201092325
-  skewness      = 0.1314607532690227
-  kurtosis      = -0.17853750416766978
-
-Raw moments: [10.71112231496177, 97.73843286491352, 12.028807532690226, 220.92564604556987]
+"UnivariateStatistic{Float64,4,Int64}  with 4 moments"
 ```
 
 ### Independent Statistics

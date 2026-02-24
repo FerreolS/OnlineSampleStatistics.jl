@@ -23,10 +23,11 @@
         output = String(take!(io))
         
         @test contains(output, "UnivariateStatistic")
-        @test contains(output, "n: 3")
+        @test contains(output, "nobs: 3")
         @test contains(output, "μ:")
         @test contains(output, "σ²:")
         @test contains(output, "σ:")
+        @test contains(output, "with 2 moments")
     end
     
     @testset "UnivariateStatistic show with higher moments" begin
@@ -46,8 +47,21 @@
         show(io, MIME"text/plain"(), A)
         output = String(take!(io))
         
-        @test contains(output, "empty")
+        @test contains(output, "nobs: 0")
         @test !contains(output, "μ:")
+    end
+
+    @testset "UnivariateStatistic summary is one line" begin
+        A = UnivariateStatistic(4)
+        fit!(A, randn(10))
+
+        io = IOBuffer()
+        summary(io, A)
+        output = String(take!(io))
+
+        @test startswith(output, "UnivariateStatistic{")
+        @test contains(output, "with 4 moments")
+        @test !contains(output, "\n")
     end
     
     @testset "IndependentStatistic compact show" begin
@@ -57,7 +71,27 @@
         output = String(take!(io))
         
         @test contains(output, "IndependentStatistic")
-        @test contains(output, "size=")
+        @test contains(output, "3x3")
+    end
+
+    @testset "IndependentStatistic summary is one line" begin
+        B = IndependentStatistic(randn(3, 3, 20), 3; dims=3)
+        io = IOBuffer()
+        summary(io, B)
+        output = String(take!(io))
+
+        @test contains(output, "3x3x1")
+        @test contains(output, "with 3 moments")
+        @test !contains(output, "\n")
+
+        B_weighted = IndependentStatistic(randn(2, 4, 12), rand(2, 4, 12), 2; dims=3)
+        io = IOBuffer()
+        summary(io, B_weighted)
+        output = String(take!(io))
+
+        @test contains(output, "2x4x1")
+        @test contains(output, "with 2 moments")
+        @test !contains(output, "\n")
     end
     
     @testset "IndependentStatistic plain text show" begin
@@ -67,9 +101,9 @@
         output = String(take!(io))
         
         @test contains(output, "IndependentStatistic")
-        @test contains(output, "size:")
-        @test contains(output, "moments:")
+        @test contains(output, "2x3x1")
         @test contains(output, "nobs:")
+        @test contains(output, "with 2 moments")
     end
     
     @testset "Weighted IndependentStatistic show" begin
@@ -79,11 +113,11 @@
         output = String(take!(io))
         
         @test contains(output, "Weighted IndependentStatistic")
-        @test contains(output, "size:")
-        @test contains(output, "moments:")
+        @test contains(output, "2x3x1")
         @test contains(output, "weights:")
         @test contains(output, "min=")
         @test contains(output, "median=")
         @test contains(output, "max=")
+        @test contains(output, "with 2 moments")
     end
 end
