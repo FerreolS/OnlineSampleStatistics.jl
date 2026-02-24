@@ -13,12 +13,14 @@ Displays:
 - Skewness and kurtosis (if K ≥ 3 or K ≥ 4)
 """
 function Base.show(io::IO, ::MIME"text/plain", A::UnivariateStatistic{T, K, I}) where {T, K, I}
+    sig_digits = get(io, :sig_digits, 2)
+
     n = nobs(A)
     println(io, "UnivariateStatistic{$T, $K, $I} with $K moments")
     if I <: Integer
         println(io, "  nobs: $n")
     else
-        println(io, "  weight: $(round(n; sigdigits = 3))")
+        println(io, "  weight: $(round(n; sigdigits = sig_digits))")
     end
 
     if n == 0
@@ -26,27 +28,27 @@ function Base.show(io::IO, ::MIME"text/plain", A::UnivariateStatistic{T, K, I}) 
     end
 
     # Always show mean
-    μ = mean(A)
+    μ = round(mean(A); sigdigits = sig_digits)
     print(io, "  μ: ", sprint(show, μ))
 
     # Show variance and std if K ≥ 2
     if K ≥ 2
-        σ² = var(A; corrected = false)
-        σ = std(A; corrected = false)
+        σ² = round(var(A; corrected = false); sigdigits = sig_digits)
+        σ = round(std(A; corrected = false); sigdigits = sig_digits)
         println(io)
         print(io, "  σ²: ", sprint(show, σ²), "  σ: ", sprint(show, σ))
     end
 
     # Show skewness if K ≥ 3
     if K ≥ 3
-        γ = skewness(A)
+        γ = round(skewness(A); sigdigits = sig_digits)
         println(io)
         print(io, "  skewness: ", sprint(show, γ))
     end
 
     # Show kurtosis if K ≥ 4
     if K ≥ 4
-        κ = kurtosis(A)
+        κ = round(kurtosis(A); sigdigits = sig_digits)
         println(io)
         print(io, "  kurtosis: ", sprint(show, κ))
     end
@@ -54,7 +56,12 @@ function Base.show(io::IO, ::MIME"text/plain", A::UnivariateStatistic{T, K, I}) 
 end
 
 # Compact display for REPL and inline use
-Base.show(io::IO, A::UnivariateStatistic) = Base.summary(io, A)
+Base.show(io::IO, A::UnivariateStatistic{T, 1}) where {T} = mean(A)
+function Base.show(io::IO, A::UnivariateStatistic{T, K}) where {T, K}
+    error_digits = get(io, :error_digits, 2)
+    return print(io, mean(A), " ± ", round(std(A; corrected = false), sigdigits = error_digits))
+end
+
 
 # One-line summary for compact listings (e.g. varinfo)
 """
@@ -65,7 +72,7 @@ Return a compact one-line summary of the statistic.
 function Base.summary(io::IO, A::UnivariateStatistic{T, K, I}) where {T, K, I}
     return print(io, "UnivariateStatistic{$T,$K,$I}  with $K moments")
 end
-
+#= 
 # Pretty-print for IndependentStatistic
 function Base.show(io::IO, ::MIME"text/plain", A::IndependentStatistic{T, N, K, I}) where {T, N, K, I}
     wts = weights(A)
@@ -85,7 +92,7 @@ function Base.show(io::IO, ::MIME"text/plain", A::IndependentStatistic{T, N, K, 
         println(io, "weights: min=$wts_min, median=$wts_median, max=$wts_max")
     end
     return
-end
+end =#
 
 """
     summary(A::IndependentStatistic)

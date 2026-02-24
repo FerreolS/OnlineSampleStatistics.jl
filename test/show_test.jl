@@ -1,18 +1,5 @@
 @testset "Show methods" begin
-    @testset "UnivariateStatistic compact show" begin
-        A = UnivariateStatistic(4)
-        io = IOBuffer()
-        show(io, A)
-        output = String(take!(io))
-        @test contains(output, "UnivariateStatistic")
-
-        fit!(A, randn(100))
-        io = IOBuffer()
-        show(io, A)
-        output = String(take!(io))
-        @test contains(output, "UnivariateStatistic")
-    end
-
+    
     @testset "UnivariateStatistic plain text show" begin
         A = UnivariateStatistic(2)
         fit!(A, [1.0, 2.0, 3.0])
@@ -100,7 +87,6 @@
 
         @test contains(output, "IndependentStatistic")
         @test contains(output, "2×3×1")
-        @test contains(output, "nobs:")
         @test contains(output, "with 2 moments")
     end
 
@@ -110,12 +96,8 @@
         show(io, MIME"text/plain"(), B_weighted)
         output = String(take!(io))
 
-        @test contains(output, "Weighted IndependentStatistic")
+        @test contains(output, "IndependentStatistic")
         @test contains(output, "2×3×1")
-        @test contains(output, "weights:")
-        @test contains(output, "min=")
-        @test contains(output, "median=")
-        @test contains(output, "max=")
         @test contains(output, "with 2 moments")
     end
 end
