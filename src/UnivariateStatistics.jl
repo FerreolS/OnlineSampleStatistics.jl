@@ -258,7 +258,7 @@ Statistics.std(A::UnivariateStatistic) = sqrt(var(A))
 Compute the sample skewness of a `A`. The skewness is defined as the third standardized moment.
 """
 
-function StatsBase.skewness(A::UnivariateStatistic{T, K, Int}) where {T, K}
+function StatsBase.skewness(A::UnivariateStatistic{T, K}) where {T, K}
     3 ≤ K || throw(ArgumentError("third moment is not available for type $(typeof(A))"))
     N = nobs(A)
     N < 2 && return T(NaN)
@@ -272,7 +272,7 @@ end
 Compute the sample kurtosis of a `A`. The kurtosis is defined as the fourth standardized moment.
 """
 
-function StatsBase.kurtosis(A::UnivariateStatistic{T, K, Int}) where {T, K}
+function StatsBase.kurtosis(A::UnivariateStatistic{T, K}) where {T, K}
     4 ≤ K || throw(ArgumentError("fourth moment is not available for type $(typeof(A))"))
     N = nobs(A)
     N < 2 && return T(NaN)
