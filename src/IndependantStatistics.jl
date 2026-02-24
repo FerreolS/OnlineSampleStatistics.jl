@@ -74,6 +74,57 @@ function IndependentStatistic(::Type{T}, sz::NTuple{N, Int}, ::Type{TW}, K::Int)
     return ZippedArray{UnivariateStatistic{T, K, eltype(weights)}}(weights, rawmoments...)
 end
 
+@inline function _check_fit_compatible_size(szA::NTuple{N, Int}, szx::NTuple{N2, Int}) where {N, N2}
+    @inbounds for d in 1:N
+        (szA[d] == 1 || szA[d] == szx[d]) ||
+            throw(DimensionMismatch("fit! : size(A) incompatible with size(x)"))
+    end
+    return nothing
+end
+
+@generated function _sliced_fit!(::Val{SZ}, A::IndependentStatistic{T, N, K}, x::AbstractArray{T, N2}) where {T, N, N2, K, SZ}
+    slc = tuple(tuple(findall(n -> n == 1, SZ)...)..., ((N + 1):N2)...)
+    code = Expr(:block)
+    push!(
+        code.args, :(
+            for y in eachslice(x; dims = $slc)
+                _fit!(A, reshape(y, SZ))
+            end
+        )
+    )
+    push!(code.args, :(return A))
+    return code
+end
+
+@generated function _sliced_fit!(::Val{SZ}, A::IndependentStatistic{T, N, K}, x::AbstractArray{T, N2}, w::AbstractArray{TW, N2}) where {T, N, N2, TW, K, SZ}
+    slc = tuple(tuple(findall(n -> n == 1, SZ)...)..., ((N + 1):N2)...)
+
+    code = Expr(:block)
+    push!(
+        code.args, :(
+            for (y, z) in zip(eachslice(x; dims = $slc), eachslice(w; dims = $slc))
+                _fit!(A, reshape(y, SZ), reshape(z, SZ))
+            end
+        )
+    )
+    push!(code.args, :(return A))
+    return code
+end
+
+@generated function _sliced_fit!(::Val{SZ}, A::IndependentStatistic{T, N, K}, x::AbstractArray{T, N2}, w::Number) where {T, N, N2, K, SZ}
+    slc = tuple(tuple(findall(n -> n == 1, SZ)...)..., ((N + 1):N2)...)
+    code = Expr(:block)
+    push!(
+        code.args, :(
+            for y in eachslice(x; dims = $slc)
+                _fit!(A, reshape(y, SZ), T(w))
+            end
+        )
+    )
+    push!(code.args, :(return A))
+    return code
+end
+
 function IndependentStatistic(x::AbstractArray{T, N}, w::AbstractArray{TW, N}, K::Int; dims = nothing) where {TW, T, N}
     size(x) == size(w) || throw(ArgumentError("IndependentStatistic : size(x) != size(w)"))
     if dims === nothing
@@ -81,13 +132,11 @@ function IndependentStatistic(x::AbstractArray{T, N}, w::AbstractArray{TW, N}, K
         _fit!(A, x, w)
     else
         maximum(dims) ≤ N || throw(ArgumentError("IndependentStatistic : $(maximum(dims)) > $N"))
-        sz = vcat(size(x)...)
-        sz[vcat(dims...)] .= 1
-        A = IndependentStatistic(T, NTuple{N, Int}(sz), TW, K)
-        #foreach((y, z) -> fit!(A, reshape(y, sz...), reshape(z, sz...)), zip(eachslice(x; dims=dims), eachslice(w; dims=dims)))
-        for (y, z) in zip(eachslice(x; dims = dims), eachslice(w; dims = dims))
-            _fit!(A, reshape(y, sz...), reshape(z, sz...))
-        end
+        sz = size(x)
+        szA = ntuple(i -> ((i ∈ dims) ? 1 : sz[i]), N)
+        A = IndependentStatistic(T, NTuple{N, Int}(szA), TW, K)
+        _sliced_fit!(Val(szA), A, x, w)
+
     end
     return A
 end
@@ -99,10 +148,10 @@ function IndependentStatistic(x::AbstractArray{T, N}, K::Int; dims = nothing) wh
         _fit!(A, x)
     else
         maximum(dims) ≤ N || throw(ArgumentError("IndependentStatistic : $(maximum(dims)) > $N"))
-        sz = vcat(size(x)...)
-        sz[vcat(dims...)] .= 1
-        A = IndependentStatistic(T, NTuple{N, Int}(sz), K)
-        foreach(y -> _fit!(A, reshape(y, sz...), 1), eachslice(x; dims = dims))
+        sz = size(x)
+        szA = ntuple(i -> ((i ∈ dims) ? 1 : sz[i]), N)
+        A = IndependentStatistic(T, NTuple{N, Int}(szA), K)
+        _sliced_fit!(Val(szA), A, x)
     end
     return A
 end
@@ -160,18 +209,10 @@ end
 function fit!(A::IndependentStatistic{T, N}, x::AbstractArray{T, N}) where {T, N}
     size(A) == size(x) && return _fit!(A, x)
 
-    szx = SVector{N, Int}(size(x)...)
-    szA = SVector{N, Int}(size(A)...)
-
-    sgltidx = findall(szA .!= 1)
-    singleton = ones(MVector{N, Bool})
-    singleton[sgltidx] .= false
-
-    szA[sgltidx] == szx[sgltidx] || throw(DimensionMismatch("fit! : size(A) incompatible with size(x)"))
-    slc = NTuple{sum(singleton), Int}((1:N)[singleton])
-    for y in eachslice(x; dims = slc)
-        _fit!(A, reshape(y, szA...))
-    end
+    szx = size(x)
+    szA = size(A)
+    _check_fit_compatible_size(szA, szx)
+    _sliced_fit!(Val(szA), A, x)
     return A
 end
 
@@ -268,9 +309,12 @@ function fit!(A::IndependentStatistic{T, N}, x::AbstractArray{T, N2}, w::W) wher
     end
 
     dims = NTuple{N2 - N, Int}((ndims(A) + 1):ndims(x))
-    for (y, z) in zip(eachslice(x; dims = dims), eachslice(w; dims = dims))
-        _fit!(A, reshape(y, size(A)), reshape(z, size(A)))
-    end
+
+
+    szx = size(x)
+    szA = size(A)
+    _check_fit_compatible_size(szA, szx)
+    _sliced_fit!(Val(szA), A, x, w)
     return A
 end
 
@@ -278,25 +322,11 @@ function fit!(A::IndependentStatistic{T, N, K}, x::AbstractArray{T, N}, w::W) wh
     if W <: AbstractArray
         size(x) == size(w) || throw(ArgumentError("IndependentStatistic : size(x) != size(w)"))
     end
-    szx = SVector{N, Int}(size(x)...)
-    szA = SVector{N, Int}(size(A)...)
 
-    sgltidx = findall(szA .!= 1)
-    singleton = ones(MVector{N, Bool})
-    singleton[sgltidx] .= false
-
-    szA[sgltidx] == szx[sgltidx] || throw(DimensionMismatch("fit! : size(A) incompatible with size(x)"))
-    slc = NTuple{sum(singleton), Int}((1:N)[singleton])
-    if W <: AbstractArray
-        for (y, z) in zip(eachslice(x; dims = slc), eachslice(w; dims = slc))
-            _fit!(A, reshape(y, szA...), reshape(z, szA...))
-        end
-    else
-
-        for y in eachslice(x; dims = slc)
-            _fit!(A, reshape(y, szA...), w)
-        end
-    end
+    szx = size(x)
+    szA = size(A)
+    _check_fit_compatible_size(szA, szx)
+    _sliced_fit!(Val(szA), A, x, w)
     return A
 end
 

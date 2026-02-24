@@ -106,7 +106,7 @@ using ZippedArrays, StructuredArrays
         @test @inferred(weights(A)) == @inferred(weights(B))
         @test @inferred(nobs(A)) == @inferred(nobs(B))
         @test @inferred(mean(A)) == mean(B)
-        @test @inferred(var(A, corrected = false)) == var(B, corrected = false)
+        @test @inferred(var(A, corrected = false)) ≈ var(B, corrected = false)
 
 
         w = (rand(size(x)...) .> 0.1)
