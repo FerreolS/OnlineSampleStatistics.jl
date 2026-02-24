@@ -273,7 +273,7 @@ Compute the sample kurtosis of a `A`. The kurtosis is defined as the fourth stan
 """
 
 function StatsBase.kurtosis(A::UnivariateStatistic{T, K, Int}) where {T, K}
-    3 ≤ K || throw(ArgumentError("third moment is not available for type $(typeof(A))"))
+    4 ≤ K || throw(ArgumentError("fourth moment is not available for type $(typeof(A))"))
     N = nobs(A)
     N < 2 && return T(NaN)
     cm2 = A.rawmoments[2]
@@ -480,14 +480,14 @@ A ≈ UnivariateStatistic(2, [1.0, 0.5, 2.0, 1.5])
 ```
 """
 function Base.merge!(A::UnivariateStatistic{T1, 1, I}, B::UnivariateStatistic{T2, K, I}) where {T1, T2, K, I}
-    promote_type(T1, T2) == T1 || throw(ArgumentError("The input for $(typeof(A)) is $T. Found $(eltype(B))."))
+    promote_type(T1, T2) == T1 || throw(ArgumentError("The input for $(typeof(A)) is $T1. Found $(eltype(B))."))
     A.weights += B.weights
     A.rawmoments[1] += inv(A.weights) * B.weights * (B.rawmoments[1] - A.rawmoments[1])
     return A
 end
 
 function Base.merge!(A::UnivariateStatistic{T1, 2, I}, B::UnivariateStatistic{T2, 2, I}) where {T1, T2, I}
-    promote_type(T1, T2) == T1 || throw(ArgumentError("The input for $(typeof(A)) is $T. Found $(eltype(B))."))
+    promote_type(T1, T2) == T1 || throw(ArgumentError("The input for $(typeof(A)) is $T1. Found $(eltype(B))."))
     (wb = weights(B)) == 0 && return A
     wa = weights(A)
     iN = inv(increment_weights!(A, wb))

@@ -95,6 +95,8 @@
         C = UnivariateStatistic(x2, 4)
         merge!(B, C)
         @test isapprox(A.rawmoments, B.rawmoments; rtol = 1.0e-6)
+
+        @test_throws ArgumentError kurtosis(UnivariateStatistic(3))
     end
 
     @testset "Complex numbers" begin
@@ -115,6 +117,8 @@
         @test_throws ArgumentError UnivariateStatistic(2, 0)
         @test_throws ArgumentError UnivariateStatistic(2, 1, -1)
         @test_throws ArgumentError UnivariateStatistic(2, 1, 0)
+        @test_throws ArgumentError merge!(UnivariateStatistic(Float32, 1), UnivariateStatistic(Float64, 1))
+        @test_throws ArgumentError merge!(UnivariateStatistic(Float32, 2), UnivariateStatistic(Float64, 2))
     end
 
     @testset "Transducers Tests" begin

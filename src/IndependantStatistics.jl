@@ -308,9 +308,6 @@ function fit!(A::IndependentStatistic{T, N}, x::AbstractArray{T, N2}, w::W) wher
         size(x) == size(w) || throw(ArgumentError("IndependentStatistic : size(x) != size(w)"))
     end
 
-    dims = NTuple{N2 - N, Int}((ndims(A) + 1):ndims(x))
-
-
     szx = size(x)
     szA = size(A)
     _check_fit_compatible_size(szA, szx)
