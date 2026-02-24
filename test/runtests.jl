@@ -5,5 +5,5 @@ using Test
 
     include("UnivariateStatistic_test.jl")
     include("IndependantStatistics_test.jl")
-    # Write your tests here.
+    include("show_test.jl")
 end
