@@ -156,6 +156,22 @@ function IndependentStatistic(x::AbstractArray{T, N}, K::Int; dims = nothing) wh
     return A
 end
 
+"""Change T (the element type)"""
+function IndependentStatistic{T}(stat::IndependentStatistic{T2,N,K,W}) where {T,T2,N,K,W}
+    ZippedArray{UnivariateStatistic{T,K,W},N}(
+        weights(stat), map(arr -> T.(arr), get_rawmoments(stat))...)
+end
+
+"""Construct with already computed raw moments"""
+function IndependentStatistics(
+    T, nsamples::Int, rawmean::AbstractArray, rawmoments::AbstractArray...)
+    K = 1 + length(moments)
+    W = typeof(nsamples)
+    all(m -> size(m) == size(rawmean), moments) || throw(
+        DimensionMismatch("moments must all have identical size"))
+    weights = MutableUniformArray(nsamples, size(rawmean))
+    ZippedArray{UnivariateStatistic{T,K,W}}(weights, rawmean, rawmoments...)
+end
 
 #= getters on IndependentStatistic =#
 
@@ -431,4 +447,27 @@ function MomentsExpression(P::Int)
         end
     end
     return code
+end
+
+function Base.merge!(
+    A::IndependentStatistic{T,N,2}, B::IndependentStatistic{T2,N,2}
+) where {T,T2,N}
+    size.(get_rawmoments(A)) == size.(get_rawmoments(B)) || throw(
+        DimensionMismatch("moments of A must have same size as moments of B"))
+    # apply the formulae given in Chan, Golub and LeVeque (1979)
+    @inbounds @simd for i in eachindex(mean(A))
+        meanAi = mean(A[i]) # store the means because we will alter them
+        meanBi = mean(B[i])
+        weightsAi = weights(A[i])
+        weightsBi = weights(B[i])
+        wA = weightsAi / (weightsAi + weightsBi)
+        wB = weightsBi / (weightsAi + weightsBi)
+        # weights
+        A.args[1][i] += B.args[1][i]
+        # mean
+        A.args[2][i] = (wA * meanAi) + (wB * meanBi)
+        # variance
+        A.args[3][i] += B.args[3][i] + (weightsAi * weightsBi * ((meanAi - meanBi) ^ 2))
+    end
+    A
 end
