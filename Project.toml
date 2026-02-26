@@ -12,8 +12,8 @@ StructuredArrays = "2e8cd123-6858-488d-b42d-068777248635"
 ZippedArrays = "8051824b-fc5e-4603-89c4-0e6ea551cb88"
 
 [compat]
-OnlineStatsBase = "1.7.1"
-StaticArrays = "1.9.13"
+OnlineStatsBase = "1"
+StaticArrays = "1"
 Statistics = "1"
 StatsBase = "0.34"
 StructuredArrays = "0.2"

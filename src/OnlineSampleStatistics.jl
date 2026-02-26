@@ -13,7 +13,11 @@ export UnivariateStatistic,
     fit!,
     merge!
 
-import OnlineStatsBase: value, _fit!, _merge!
+import OnlineStatsBase
+import Statistics
+import StatsBase
+
+import OnlineStatsBase: value, _fit!
 
 import StatsBase: fit!, nobs, mean, var, std, skewness, kurtosis, weights
 

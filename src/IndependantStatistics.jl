@@ -1,4 +1,6 @@
-using ZippedArrays, StructuredArrays, StaticArrays
+import ZippedArrays: ZippedArray
+import StructuredArrays
+import StructuredArrays: MutableUniformArray, setvalue!
 #= getters on AbstractArrays that are not  IndependentStatistic =#
 """
     get_rawmoments(x::AbstractArray{<:UnivariateStatistic})
@@ -217,7 +219,7 @@ function fit!(A::IndependentStatistic{T, N}, x::AbstractArray{T, N}) where {T, N
 end
 
 @inline function increment!(A::MutableUniformArray, x::Real)
-    StructuredArrays.setvalue!(A, StructuredArrays.value(A) + x)
+    setvalue!(A, StructuredArrays.value(A) + x)
     return A
 end
 @inline increment!(A::AbstractArray, x) = A .+= x

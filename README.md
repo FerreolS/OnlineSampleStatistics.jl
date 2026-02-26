@@ -27,12 +27,13 @@ Designed for scenarios where data arrives in a streaming fashion or when memory 
 
 ## Usage
 
-It  mainly implements of two types: `UnivariateStatistic`  and `IndependentStatistic`. For both types, 
+It  mainly implements of two types: `UnivariateStatistic`  and `IndependentStatistic`. For both types,
 adding samples to the statistic is done using the `fit!` methods.  It supports weighted sample.
 `StatsBase` methods are used to query `weights`, `nobs`, `mean`, `var`, `std`, `skewness` and `kurtosis`.
 
 ### Univariate Statistics
-`UnivariateStatistic{T,K}` tracks `K` statistical moments of a univariate data stream of type `T`.  It is defined as a subtype of `OnlineStats{T}` from  [OnlineStats.jl](https://github.com/joshday/OnlineStats.jl) to leverage its functionality, including the [Transducers.jl](https://github.com/JuliaFolds/Transducers.jl)   methods for parallel processing. 
+
+`UnivariateStatistic{T,K}` tracks `K` statistical moments of a univariate data stream of type `T`.  It is defined as a subtype of `OnlineStats{T}` from  [OnlineStats.jl](https://github.com/joshday/OnlineStats.jl) to leverage its functionality, including the [Transducers.jl](https://github.com/JuliaFolds/Transducers.jl)   methods for parallel processing.
 
 ```julia
 using OnlineSampleStatistics

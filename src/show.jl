@@ -1,6 +1,3 @@
-using StructuredArrays
-using Statistics
-
 """
     show(io::IO, A::UnivariateStatistic)
 
@@ -65,7 +62,7 @@ end
 
 # One-line summary for compact listings (e.g. varinfo)
 """
-    summary(A::UnivariateStatistic)
+	    summary(A::UnivariateStatistic)
 
 Return a compact one-line summary of the statistic.
 """
