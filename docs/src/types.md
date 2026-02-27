@@ -63,7 +63,6 @@ UnivariateStatistic supports weighted updates are supported with non-negative re
 Integer weights are usefull to discard some samples or to represents a number of observation.
 
 ```jldoctest; setup = :(using OnlineSampleStatistics)
-
 julia> weightedstat = UnivariateStatistic(2)
 UnivariateStatistic{Float64, 2, Int64} with 2 moments
   nobs: 0
