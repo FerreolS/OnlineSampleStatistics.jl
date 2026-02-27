@@ -298,7 +298,10 @@ function fit!(A::UnivariateStatistic{T}, y::AbstractArray{T2}) where {T, T2 <: N
     return A
 end
 
-fit!(A::UnivariateStatistic{T}, y::AbstractArray{T}) where {T <: Number} = foreach(x -> _fit!(A, x), y)
+function fit!(A::UnivariateStatistic{T}, y::AbstractArray{T}) where {T <: Number}
+    foreach(x -> _fit!(A, x), y)
+    return A
+end
 
 function fit!(A::UnivariateStatistic{T}, y::AbstractArray{T2}, w) where {T, T2 <: Number}
     T == eltype(y) || promote_type(T, eltype(y)) == T || throw(ArgumentError("The input for $(typeof(A)) is $T. Found $T2."))
