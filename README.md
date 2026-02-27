@@ -13,7 +13,7 @@
 [doc-img]: https://img.shields.io/badge/docs-latest-blue.svg
 [doc-url]: https://ferreols.github.io/OnlineSampleStatistics.jl/dev/
 
-`OnlineSampleStatistics.jl` is a Julia package for online single pass estimation of statistical moments. It implements  formulae from [Pébay et al 2016](https://doi.org/10.1007/s00180-015-0637-z)
+`OnlineSampleStatistics.jl` is a Julia package for online, single-pass estimation of statistical moments. It implements formulae from [Pébay et al 2016](https://doi.org/10.1007/s00180-015-0637-z)
 
 ## Features
 
@@ -27,26 +27,26 @@ Designed for scenarios where data arrives in a streaming fashion or when memory 
 
 ## Usage
 
-It  mainly implements of two types: `UnivariateStatistic`  and `IndependentStatistic`. For both types, adding samples to the statistic is done using the `fit!` methods.  It supports weighted sample.`Statistics` and `StatsBase` methods are used to query `mean`, `var`, `std`, `skewness`, `kurtosis`, `wsum`, `weights`and  `nobs`.
+It mainly provides two types: `UnivariateStatistic` and `IndependentStatistic`. For both types, samples are added using `fit!` methods, including weighted samples. `Statistics` and `StatsBase` methods are used to query `mean`, `var`, `std`, `skewness`, `kurtosis`, `wsum`, `weights`, and `nobs`.
 
 `UnivariateStatistic` and `IndependentStatistic` objects support pretty-printing via `show` methods.
 
 
 ### Univariate Statistics
 
-`UnivariateStatistic{T,K}` tracks `K` statistical moments of a univariate data stream of type `T`.  It is defined as a subtype of `OnlineStats{T}` from  [OnlineStats.jl](https://github.com/joshday/OnlineStats.jl) to leverage its functionality, including the [Transducers.jl](https://github.com/JuliaFolds/Transducers.jl)   methods for parallel processing.
+`UnivariateStatistic{T,K}` tracks `K` statistical moments of a univariate data stream of type `T`. It is defined as a subtype of `OnlineStat{T}` from [OnlineStats.jl](https://github.com/joshday/OnlineStats.jl) to leverage its functionality, including [Transducers.jl](https://github.com/JuliaFolds/Transducers.jl) methods for parallel processing.
 
 ```julia-repl
 julia> using OnlineSampleStatistics
 
 julia> # Create a univariate statistic to track up to 4 moments
-       stat = UnivariateStatistic(4)
+julia> stat = UnivariateStatistic(4)
 UnivariateStatistic{Float64, 4, Int64} with 4 moments
   nobs: 0
 
 
 julia> # Add data incrementally
-       fit!(stat, 1.0)                                             # single sample
+julia> fit!(stat, 1.0)                                             # single sample
 UnivariateStatistic{Float64, 4, Int64} with 4 moments
   nobs: 1
   μ: 1.0
@@ -59,7 +59,7 @@ julia> fit!(stat, [2.0, 3.0, 4.0]);                                # array of sa
 julia> fit!(stat, skipmissing( [missing, 5.0, 6.0, 7.0, missing]));# iterator of samples
 
 julia> # Compute statistics
-       println("Number of samples: ", nobs(stat))
+julia> println("Number of samples: ", nobs(stat))
 Number of samples: 7
 
 julia> println("Mean: ", mean(stat))
@@ -75,7 +75,7 @@ julia> println("Kurtosis: ", kurtosis(stat))
 Kurtosis: -1.2500000000000002
 
 julia> # Compute weighted statistics
-       fit!(stat, 1.0,2.0)                           # single sample with weight
+julia> fit!(stat, 1.0,2.0)                           # single sample with weight
 UnivariateStatistic{Float64, 4, Int64} with 4 moments
   nobs: 9
   μ: 3.3
