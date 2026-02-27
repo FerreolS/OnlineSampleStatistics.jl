@@ -2,9 +2,10 @@
 
 ## UnivariateStatistic
 
-`UnivariateStatistic{T,K}` tracks online moments of a scalar stream of type `T` up to order `K`.
-
+`UnivariateStatistic{T,K}` tracks online moments of a scalar stream of type `T` up to order `K`. 
 Common constructors:
+- `UnivariateStatistic(T, K, W)` empty statistic with value type `T`, moment order `K`, and weight type `W`;
+- `UnivariateStatistic(T, K, W, x, w)` initialize from one weighted sample with types specified converting the sample if needed;
 - `UnivariateStatistic(K)` empty statistic with `Float64` values and `Int` weights;
 - `UnivariateStatistic(K, x)` initialize from one sample (type inferred from `x`);
 - `UnivariateStatistic(K, x, w)` initialize from one weighted sample;
@@ -36,46 +37,94 @@ julia> nobs(s)
 julia> mean(s), var(s), skewness(s), kurtosis(s)
 (2.5, 1.6666666666666667, 0.0, -1.36)
 
-julia> s2 = UnivariateStatistic(Float64, 2, Float64, 1.5, 1.0)
-UnivariateStatistic{Float64, 2, Float64} with 2 moments
-  weight: 1.0
-  μ: 1.5
-  σ²: 0.0  σ: 0.0
+julia> cpx = 2. *cis.(π/3:π/3:2π)
+6-element Vector{ComplexF64}:
+  1.0000000000000002 + 1.7320508075688772im
+ -0.9999999999999996 + 1.7320508075688774im
+                -2.0 + 2.4492935982947064e-16im
+ -1.0000000000000009 - 1.732050807568877im
+  0.9999999999999987 - 1.732050807568878im
+                 2.0 - 2.266215559059192e-15im
 
-julia> s3 = UnivariateStatistic(2, 1.5, 3.0)
-UnivariateStatistic{Float64, 2, Float64} with 2 moments
-  weight: 3.0
-  μ: 1.5
-  σ²: 0.0  σ: 0.0
+julia> cpxstat =UnivariateStatistic(2,cpx)
+UnivariateStatistic{ComplexF64, 2, Int64} with 2 moments
+  nobs: 6
+  μ: -2.2e-16 - 4.2e-16im
+  σ²: 4.0 + 0.0im  σ: 2.0 + 0.0im
+
+julia> cpxstat =UnivariateStatistic(3,cpx)
+ERROR: ArgumentError: UnivariateStatistic : 3 > 2 not implemented for complex numbers
 ```
+
 ### Weighted UnivariateStatistic
 
-Weighted updates are supported. As an example these weights are usefull to represent the number of observation or sampling probability for each observation. In that case the moment weights are taken into an account in:
+UnivariateStatistic supports weighted updates are supported with non-negative real weights.
+
+Integer weights are usefull to discard some samples or to represents a number of observation.
 
 ```jldoctest; setup = :(using OnlineSampleStatistics)
-julia> sw = UnivariateStatistic(2);
 
-julia> fit!(sw, [1.0, 3.0, -10.], [1, 3, 0])
+julia> weightedstat = UnivariateStatistic(2)
 UnivariateStatistic{Float64, 2, Int64} with 2 moments
-  nobs: 4
-  μ: 2.5
-  σ²: 0.75  σ: 0.87
+  nobs: 0
 
-julia> mean(sw)
-2.5
+julia> fit!(weightedstat, [1.0, 3.0, -10.], [true, true, false])
+UnivariateStatistic{Float64, 2, Int64} with 2 moments
+  nobs: 2
+  μ: 2.0
+  σ²: 1.0  σ: 1.0
 
-julia> var(sw)
-1.0
+julia> fit!(weightedstat, [0, π, 2.18], [4, 1, 2])
+UnivariateStatistic{Float64, 2, Int64} with 2 moments
+  nobs: 9
+  μ: 1.3
+  σ²: 1.6  σ: 1.3
 
-julia> var(sw; corrected=false)
-0.75
+julia> mean(weightedstat)
+1.2779547392877548
 
+julia> var(weightedstat)
+1.8344861950096323
+
+julia> var(weightedstat; corrected=false)
+1.6306543955641175
 ```
+
+Real weights can represent sampling probability for each observation.
+
+```jldoctest; setup = :(using OnlineSampleStatistics)
+julia> weightedstat = UnivariateStatistic(2,  [0, π, 2.18], [4.0, 1.0, 2.0])
+UnivariateStatistic{Float64, 2, Float64} with 2 moments
+  weight: 7.0
+  μ: 1.1
+  σ²: 1.6  σ: 1.3
+
+julia> fit!(weightedstat, [0, 1, 2.1], [0.1, 0.1, 0.2])
+UnivariateStatistic{Float64, 2, Float64} with 2 moments
+  weight: 7.4
+  μ: 1.1
+  σ²: 1.6  σ: 1.3
+
+julia> mean(weightedstat)
+1.083999007241864
+
+julia> var(weightedstat)
+┌ Warning: The number of samples is not an integer. The variance is not corrected.
+└ @ OnlineSampleStatistics ~/Code/Julia/OnlineSampleStatistics.jl/src/UnivariateStatistics.jl:288
+1.5758116119053236
+
+julia> var(weightedstat; corrected=false)
+1.5758116119053236
+  
+```
+!!! warning
+  For consistency with other packages, `var` applies Bessel's correction when weights are integers (unbiased estimator) but not when weights are floats (frequency weights). Use the `corrected` keyword argument to precise this behavior.
+
 
 ## IndependentStatistic
 
 `IndependentStatistic{T,N,K,W}` is an array-like container of independent univariate statistics.
-It is useful for tensor data where moments are accumulated independently per position.
+It is useful for data where moments are accumulated independently per position (e.g. data from array of sensors and camera)
 
 Typical workflow:
 - build from an `N`-D sample array;

@@ -66,9 +66,21 @@ UnivariateStatistic{Float64, 4, Int64} with 4 moments
   skewness: NaN
   kurtosis: NaN
 
-julia> fit!(stat, [2.0, 3.0, 4.0]);                                # array of samples
+julia> fit!(stat, [2.0, 3.0, 4.0])                                # array of samples
+UnivariateStatistic{Float64, 4, Int64} with 4 moments
+  nobs: 3
+  μ: 3.0
+  σ²: 0.67  σ: 0.82
+  skewness: 0.0
+  kurtosis: -1.5
 
-julia> fit!(stat, skipmissing( [missing, 5.0, 6.0, 7.0, missing]));# iterator of samples
+julia> fit!(stat, skipmissing( [missing, 5.0, 6.0, 7.0, missing])) # iterator of samples
+UnivariateStatistic{Float64, 4, Int64} with 4 moments
+  nobs: 6
+  μ: 4.5
+  σ²: 2.9  σ: 1.7
+  skewness: -1.2e-16
+  kurtosis: -1.3
 
 julia> # Compute statistics
 julia> println("Number of samples: ", nobs(stat))
