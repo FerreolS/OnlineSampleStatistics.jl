@@ -203,10 +203,7 @@ end
 
 function fit!(A::IndependentStatistic{T, N}, x::AbstractArray{T, N2}) where {T, N, N2}
     N2 ≥ N || throw(ArgumentError("fit! : N2 < N"))
-    dims = NTuple{N2 - N, Int}((ndims(A) + 1):ndims(x))
-    for y in eachslice(x; dims = dims)
-        _fit!(A, reshape(y, size(A)))
-    end
+    _sliced_fit!(Val(size(A)), A, x)
     return A
 end
 
