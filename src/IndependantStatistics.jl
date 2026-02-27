@@ -408,46 +408,46 @@ function fit!(A::IndependentStatistic{T, N, K}, B::IndependentStatistic{TB, N, K
 end
 
 """
-    merge(A::UnivariateStatistic, B::UnivariateStatistic)
+    merge(A::IndependentStatistic, B::IndependentStatistic)
 
-Merge two univariate statistics by combining their data.
+Merge two independent statistics by combining their data.
 
 Creates a copy of statistic `A` and fits it with the data from statistic `B`,
 returning a new merged statistic `C`.
 
 # Arguments
-- `A::UnivariateStatistic`: The first univariate statistic
-- `B::UnivariateStatistic`: The second univariate statistic to merge into `A`
+- `A::IndependentStatistic`: The first independent statistic
+- `B::IndependentStatistic`: The second independent statistic to merge into `A`
 
 # Returns
-- `C::UnivariateStatistic`: A new statistic that is the result of merging `A` and `B`
+- `C::IndependentStatistic`: A new statistic that is the result of merging `A` and `B`
 
 # See Also
 - [`merge!`](@ref): In-place version of merge
 
 """
-function Base.merge(A::UnivariateStatistic, B::UnivariateStatistic)
+function Base.merge(A::IndependentStatistic, B::IndependentStatistic)
     C = deepcopy(A)
     fit!(C, B)
     return C
 end
 
 """
-    merge!(A::UnivariateStatistic, B::UnivariateStatistic)
+    merge!(A::IndependentStatistic, B::IndependentStatistic)
 
-Merge the statistics from univariate statistic `B` into `A`, updating `A` in-place.
+Merge the statistics from independent statistic `B` into `A`, updating `A` in-place.
 
 This operation combines the sample statistics from `B` into `A` by fitting `A` with the data 
 represented by `B`. After merging, `A` will contain aggregated statistics from both sources.
 
 # Arguments
-- `A::UnivariateStatistic`: The target statistic object to be updated (modified in-place)
-- `B::UnivariateStatistic`: The source statistic object to merge into `A`
+- `A::IndependentStatistic`: The target statistic object to be updated (modified in-place)
+- `B::IndependentStatistic`: The source statistic object to merge into `A`
 
 # Returns
-- `A::UnivariateStatistic`: The updated statistic object
+- `A::IndependentStatistic`: The updated statistic object
 """
-Base.merge!(A::UnivariateStatistic, B::UnivariateStatistic) = fit!(A, B)
+Base.merge!(A::IndependentStatistic, B::IndependentStatistic) = fit!(A, B)
 
 function _fit!(A::IndependentStatistic{T, D, 1}, b::AbstractArray{T, D}, wb::W) where {D, T <: Real, W <: Union{Real, AbstractArray{<:Real, D}}}
 
