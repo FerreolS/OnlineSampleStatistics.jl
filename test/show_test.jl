@@ -50,7 +50,7 @@
     end
 
     @testset "IndependentStatistic compact show" begin
-        B = IndependentStatistic(randn(3, 3, 50), 4; dims = 3)
+        B = IndependentStatistic(4, randn(3, 3, 50); dims = 3)
         io = IOBuffer()
         show(io, B)
         output = String(take!(io))
@@ -60,7 +60,7 @@
     end
 
     @testset "IndependentStatistic summary is one line" begin
-        B = IndependentStatistic(randn(3, 3, 20), 3; dims = 3)
+        B = IndependentStatistic(3, randn(3, 3, 20); dims = 3)
         io = IOBuffer()
         summary(io, B)
         output = String(take!(io))
@@ -69,7 +69,7 @@
         @test contains(output, "with 3 moments")
         @test !contains(output, "\n")
 
-        B_weighted = IndependentStatistic(randn(2, 4, 12), rand(2, 4, 12), 2; dims = 3)
+        B_weighted = IndependentStatistic(2, randn(2, 4, 12), rand(2, 4, 12); dims = 3)
         io = IOBuffer()
         summary(io, B_weighted)
         output = String(take!(io))
@@ -80,7 +80,7 @@
     end
 
     @testset "IndependentStatistic plain text show" begin
-        B = IndependentStatistic(randn(2, 3, 20), 2; dims = 3)
+        B = IndependentStatistic(2, randn(2, 3, 20); dims = 3)
         io = IOBuffer()
         show(io, MIME"text/plain"(), B)
         output = String(take!(io))
@@ -91,7 +91,7 @@
     end
 
     @testset "Weighted IndependentStatistic show" begin
-        B_weighted = IndependentStatistic(randn(2, 3, 20), rand(2, 3, 20), 2; dims = 3)
+        B_weighted = IndependentStatistic(2, randn(2, 3, 20), rand(2, 3, 20); dims = 3)
         io = IOBuffer()
         show(io, MIME"text/plain"(), B_weighted)
         output = String(take!(io))

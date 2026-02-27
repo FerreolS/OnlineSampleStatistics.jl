@@ -87,7 +87,7 @@ julia> using OnlineSampleStatistics
 
 julia> x = reshape(collect(1.0:120.0), 2, 3, 20);
 
-julia> a = IndependentStatistic(x, 2; dims=3);
+julia> a = IndependentStatistic(2, x; dims=3);
 
 julia> size(a), size(mean(a)), size(var(a))
 ((2, 3, 1), (2, 3, 1), (2, 3, 1))
@@ -100,7 +100,7 @@ julia> x = reshape(collect(1.0:120.0), 2, 3, 20);
 
 julia> w = fill(2.0, 2, 3, 20);
 
-julia> aw = IndependentStatistic(x, w, 2; dims=3);
+julia> aw = IndependentStatistic(2, x, w; dims=3);
 
 julia> size(mean(aw)), size(var(aw))
 ((2, 3, 1), (2, 3, 1))

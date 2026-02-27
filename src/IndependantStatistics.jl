@@ -59,15 +59,15 @@ ZippedArrays.build(::Type{<:UnivariateStatistic}, args...) = build_from_rawmomen
 ZippedArrays.build(::Type{<:UnivariateStatistic}, args::Tuple) = build_from_rawmoments(args...)
 
 #= constructor for IndependentStatistic =#
-IndependentStatistic(sz::NTuple{N, Int}, K::Int) where {N} = IndependentStatistic(Float64, sz, K)
+IndependentStatistic(K::Int, sz::NTuple{N, Int}) where {N} = IndependentStatistic(Float64, K, sz)
 
-function IndependentStatistic(::Type{T}, sz::NTuple{N, Int}, K::Int) where {T, N}
+function IndependentStatistic(::Type{T}, K::Int, sz::NTuple{N, Int}) where {T, N}
     K > 0 || throw(ArgumentError("Moment of order $K <= 0 undefined"))
     rawmoments = (zeros(T, sz) for _ in 1:K)
     return ZippedArray{UnivariateStatistic{T, K, Int}}(MutableUniformArray(0, sz...), rawmoments...)
 end
 
-function IndependentStatistic(::Type{T}, sz::NTuple{N, Int}, ::Type{TW}, K::Int) where {TW, T, N}
+function IndependentStatistic(::Type{T}, K::Int, ::Type{TW}, sz::NTuple{N, Int}) where {TW, T, N}
     K > 0 || throw(ArgumentError("Moment of order $K <= 0 undefined"))
     rawmoments = (zeros(T, sz) for _ in 1:K)
     if TW == Bool
@@ -77,6 +77,10 @@ function IndependentStatistic(::Type{T}, sz::NTuple{N, Int}, ::Type{TW}, K::Int)
     end
     return ZippedArray{UnivariateStatistic{T, K, eltype(weights)}}(weights, rawmoments...)
 end
+
+@deprecate IndependentStatistic(sz::NTuple{N, Int}, K::Int) where {N} IndependentStatistic(K, sz)
+@deprecate IndependentStatistic(::Type{T}, sz::NTuple{N, Int}, K::Int) where {T, N} IndependentStatistic(T, K, sz)
+@deprecate IndependentStatistic(::Type{T}, sz::NTuple{N, Int}, ::Type{TW}, K::Int) where {TW, T, N} IndependentStatistic(T, K, TW, sz)
 
 @inline function _check_fit_compatible_size(szA::NTuple{N, Int}, szx::NTuple{N2, Int}) where {N, N2}
     @inbounds for d in 1:N
@@ -129,16 +133,16 @@ end
     return code
 end
 
-function IndependentStatistic(x::AbstractArray{T, N}, w::AbstractArray{TW, N}, K::Int; dims = nothing) where {TW, T, N}
+function IndependentStatistic(K::Int, x::AbstractArray{T, N}, w::AbstractArray{TW, N}; dims = nothing) where {TW, T, N}
     size(x) == size(w) || throw(ArgumentError("IndependentStatistic : size(x) != size(w)"))
     if dims === nothing
-        A = IndependentStatistic(T, size(x), TW, K)
+        A = IndependentStatistic(T, K, TW, size(x))
         _fit!(A, x, w)
     else
         maximum(dims) ≤ N || throw(ArgumentError("IndependentStatistic : $(maximum(dims)) > $N"))
         sz = size(x)
         szA = ntuple(i -> ((i ∈ dims) ? 1 : sz[i]), N)
-        A = IndependentStatistic(T, NTuple{N, Int}(szA), TW, K)
+        A = IndependentStatistic(T, K, TW, NTuple{N, Int}(szA))
         _sliced_fit!(Val(szA), A, x, w)
 
     end
@@ -146,18 +150,28 @@ function IndependentStatistic(x::AbstractArray{T, N}, w::AbstractArray{TW, N}, K
 end
 
 
-function IndependentStatistic(x::AbstractArray{T, N}, K::Int; dims = nothing) where {T, N}
+function IndependentStatistic(K::Int, x::AbstractArray{T, N}; dims = nothing) where {T, N}
     if dims === nothing
-        A = IndependentStatistic(T, size(x), K)
+        A = IndependentStatistic(T, K, size(x))
         _fit!(A, x)
     else
         maximum(dims) ≤ N || throw(ArgumentError("IndependentStatistic : $(maximum(dims)) > $N"))
         sz = size(x)
         szA = ntuple(i -> ((i ∈ dims) ? 1 : sz[i]), N)
-        A = IndependentStatistic(T, NTuple{N, Int}(szA), K)
+        A = IndependentStatistic(T, K, NTuple{N, Int}(szA))
         _sliced_fit!(Val(szA), A, x)
     end
     return A
+end
+
+function IndependentStatistic(x::AbstractArray{T, N}, w::AbstractArray{TW, N}, K::Int; dims = nothing) where {TW, T, N}
+    Base.depwarn("`IndependentStatistic(x, w, K; dims=...)` is deprecated, use `IndependentStatistic(K, x, w; dims=...)`.", :IndependentStatistic)
+    return IndependentStatistic(K, x, w; dims = dims)
+end
+
+function IndependentStatistic(x::AbstractArray{T, N}, K::Int; dims = nothing) where {T, N}
+    Base.depwarn("`IndependentStatistic(x, K; dims=...)` is deprecated, use `IndependentStatistic(K, x; dims=...)`.", :IndependentStatistic)
+    return IndependentStatistic(K, x; dims = dims)
 end
 
 

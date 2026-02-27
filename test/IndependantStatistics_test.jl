@@ -3,14 +3,14 @@ using ZippedArrays, StructuredArrays
 @testset "IndependentStatistic Tests" begin
     # Test constructor with default type
     @testset "Constructor Tests" begin
-        A = IndependentStatistic((3, 3), 5)
+        A = IndependentStatistic(5, (3, 3))
         @test size(A) == (3, 3)
         @test typeof(A) <: ZippedArray
     end
 
     # Test constructor with custom type
     @testset "other Type Constructor" begin
-        A = IndependentStatistic(Float32, (4, 4), 2)
+        A = IndependentStatistic(Float32, 2, (4, 4))
         @test size(A) == (4, 4)
         @test typeof(A) <: ZippedArray
     end
@@ -19,12 +19,12 @@ using ZippedArrays, StructuredArrays
         using OnlineSampleStatistics: get_rawmoments, weights, get_moments
         data = [1.0 2.0 3.0; 4.0 5.0 6.0; 7.0 8.0 9.0]
 
-        A = IndependentStatistic(data, 1)
+        A = IndependentStatistic(1, data)
         @test @inferred(mean(A)) ≈ mean.(A)
 
-        A = IndependentStatistic((3, 3), 5)
+        A = IndependentStatistic(5, (3, 3))
         fit!(A, data)
-        @test A == IndependentStatistic(data, 5)
+        @test A == IndependentStatistic(5, data)
         @test @inferred(order(A)) == 5
         B = [UnivariateStatistic(5, d) for d in data]
         @test @inferred(order(B)) == 5
@@ -47,22 +47,22 @@ using ZippedArrays, StructuredArrays
         @test @inferred(mean(A)) ≈ mean.(A)
         @test @inferred(var(A; corrected = false)) ≈ var.(A; corrected = false)
 
-        C = IndependentStatistic(data, trues(size(data)...), 5)
+        C = IndependentStatistic(5, data, trues(size(data)...))
         @test @inferred(mean(C)) ≈ data
     end
 
     @testset "weightless moments estimation" begin
         sz = (2, 3)
         x = randn(sz..., 10)
-        A = IndependentStatistic(sz, 1)
-        B = IndependentStatistic(Float64, sz, Int, 1)
+        A = IndependentStatistic(1, sz)
+        B = IndependentStatistic(Float64, 1, Int, sz)
         fit!(A, x)
         fit!(B, x)
         @test mean(A) ≈ dropdims(mean(x; dims = 3), dims = 3)
         @test mean(B) ≈ dropdims(mean(x; dims = 3), dims = 3)
 
-        A = IndependentStatistic(sz, 2)
-        B = IndependentStatistic(Float64, sz, Int, 2)
+        A = IndependentStatistic(2, sz)
+        B = IndependentStatistic(Float64, 2, Int, sz)
         fit!(A, x)
         fit!(B, x)
         @test mean(A) ≈ dropdims(mean(x; dims = 3), dims = 3)
@@ -70,8 +70,8 @@ using ZippedArrays, StructuredArrays
         @test var(A) ≈ dropdims(var(x; dims = 3), dims = 3)
         @test var(B) ≈ dropdims(var(x; dims = 3), dims = 3)
 
-        A = IndependentStatistic(sz, 4)
-        B = IndependentStatistic(Float64, sz, Int, 4)
+        A = IndependentStatistic(4, sz)
+        B = IndependentStatistic(Float64, 4, Int, sz)
         fit!(A, x)
         fit!(B, x)
         @test mean(A) ≈ dropdims(mean(x; dims = 3), dims = 3)
@@ -87,22 +87,22 @@ using ZippedArrays, StructuredArrays
     end
     # Test error handling for invalid dimensions
     @testset "Error Handling" begin
-        A = IndependentStatistic((3, 3), 2)
+        A = IndependentStatistic(2, (3, 3))
         @test_throws DimensionMismatch fit!(A, [1.0 2.0; 3.0 4.0])
     end
 
     @testset "Weighted Data" begin
         x = randn(2, 3, 10)
-        A = IndependentStatistic(x, trues(size(x)...), 2)
-        B = IndependentStatistic(x, 2)
+        A = IndependentStatistic(2, x, trues(size(x)...))
+        B = IndependentStatistic(2, x)
         @test @inferred(weights(A)) == @inferred(weights(B))
         @test @inferred(nobs(A)) == @inferred(nobs(B))
         @test @inferred(mean(A)) == mean(B)
 
 
         dims = 3
-        A = IndependentStatistic(x, trues(size(x)...), 2; dims = dims)
-        B = IndependentStatistic(x, 2; dims = dims)
+        A = IndependentStatistic(2, x, trues(size(x)...); dims = dims)
+        B = IndependentStatistic(2, x; dims = dims)
         @test @inferred(weights(A)) == @inferred(weights(B))
         @test @inferred(nobs(A)) == @inferred(nobs(B))
         @test @inferred(mean(A)) == mean(B)
@@ -110,28 +110,28 @@ using ZippedArrays, StructuredArrays
 
 
         w = (rand(size(x)...) .> 0.1)
-        A = IndependentStatistic(x, w, 2; dims = dims)
+        A = IndependentStatistic(2, x, w; dims = dims)
 
         @test mean(A) ≈ sum(w .* x; dims = dims) ./ sum(w; dims = dims)
         @test var(A; corrected = false) ≈ sum(w .* (x .- mean(A)) .^ 2; dims = dims) ./ sum(w; dims = dims)
 
-        B = IndependentStatistic(Float64, size(A)[1:2], Int, 2)
+        B = IndependentStatistic(Float64, 2, Int, size(A)[1:2])
         fit!(B, x, w)
         @test @inferred(dropdims(weights(A); dims = 3)) == @inferred(weights(B))
         @test @inferred(dropdims(nobs(A); dims = 3)) == @inferred(nobs(B))
         @test @inferred(dropdims(mean(A); dims = 3)) == mean(B)
 
-        A = IndependentStatistic(Float64, size(A), Float64, 1)
+        A = IndependentStatistic(Float64, 1, Float64, size(A))
         @inferred fit!(A, Float32.(x), w)
         @test nobs(A) ≈ sum(w, dims = dims)
 
-        A = IndependentStatistic(Float64, size(A), Float64, 1)
+        A = IndependentStatistic(Float64, 1, Float64, size(A))
         @inferred fit!(A, x, 1)
 
-        B = IndependentStatistic(Float64, size(A), 1)
+        B = IndependentStatistic(Float64, 1, size(A))
         @inferred fit!(B, x, 1)
 
-        C = IndependentStatistic(Float64, size(A), Int, 1)
+        C = IndependentStatistic(Float64, 1, Int, size(A))
         @inferred fit!(C, x, trues(size(x)...))
 
         @test @inferred(weights(A)) == @inferred(weights(B))

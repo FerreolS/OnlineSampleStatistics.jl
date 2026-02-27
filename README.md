@@ -115,7 +115,7 @@ julia> x = randn(3, 4, 10); #  array of samples
 
 julia> w = rand(3, 4, 10);  #  array of weights
 
-julia> stat = IndependentStatistic(x,w, 2; dims=3); # Tracking 2  statistical moments along dimension dims=3.
+julia> stat = IndependentStatistic(2, x, w; dims=3); # Tracking 2 statistical moments along dimension dims=3.
 
 julia> summary(stat)
 "3×4×1 IndependentStatistic{Float64, 3, 2, Float64} with 2 moments"
