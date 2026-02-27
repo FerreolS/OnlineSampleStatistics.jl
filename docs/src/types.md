@@ -110,7 +110,7 @@ julia> mean(weightedstat)
 
 julia> var(weightedstat)
 ┌ Warning: The number of samples is not an integer. The variance is not corrected.
-└ @ OnlineSampleStatistics ~/Code/Julia/OnlineSampleStatistics.jl/src/UnivariateStatistics.jl:288
+└ @ OnlineSampleStatistics ~/work/OnlineSampleStatistics.jl/src/UnivariateStatistics.jl:288
 1.5758116119053236
 
 julia> var(weightedstat; corrected=false)
