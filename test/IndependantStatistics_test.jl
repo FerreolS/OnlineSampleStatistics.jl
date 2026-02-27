@@ -141,4 +141,60 @@ using ZippedArrays, StructuredArrays
         @test @inferred(nobs(A)) == @inferred(nobs(C))
         @test @inferred(mean(A)) == mean(C)
     end
+
+    @testset "fit! from IndependentStatistic" begin
+        x = randn(2, 3, 20)
+        x1 = x[:, :, 1:10]
+        x2 = x[:, :, 11:20]
+
+        A = IndependentStatistic(4, x1; dims = 3)
+        B = IndependentStatistic(4, x2; dims = 3)
+        C = IndependentStatistic(4, x; dims = 3)
+        fit!(A, B)
+
+        @test isapprox(mean(A), mean(C); rtol = 1.0e-10)
+        @test isapprox(var(A; corrected = false), var(C; corrected = false); rtol = 1.0e-10)
+
+        w = rand(2, 3, 20)
+        w1 = w[:, :, 1:10]
+        w2 = w[:, :, 11:20]
+
+        Aw = IndependentStatistic(2, x1, w1; dims = 3)
+        Bw = IndependentStatistic(2, x2, w2; dims = 3)
+        Cw = IndependentStatistic(2, x, w; dims = 3)
+        fit!(Aw, Bw)
+
+        @test isapprox(mean(Aw), mean(Cw); rtol = 1.0e-10)
+        @test isapprox(var(Aw; corrected = false), var(Cw; corrected = false); rtol = 1.0e-10)
+    end
+
+    @testset "merge and merge!" begin
+        x = randn(2, 3, 20)
+        A = IndependentStatistic(2, x[:, :, 1:10]; dims = 3)
+        B = IndependentStatistic(2, x[:, :, 11:20]; dims = 3)
+        C = IndependentStatistic(2, x; dims = 3)
+
+        M = merge(A, B)
+        @test isapprox(mean(M), mean(C); rtol = 1.0e-10)
+        @test isapprox(var(M; corrected = false), var(C; corrected = false); rtol = 1.0e-10)
+
+        A2 = IndependentStatistic(2, x[:, :, 1:10]; dims = 3)
+        merge!(A2, B)
+        @test isapprox(mean(A2), mean(C); rtol = 1.0e-10)
+        @test isapprox(var(A2; corrected = false), var(C; corrected = false); rtol = 1.0e-10)
+
+        w = rand(2, 3, 20)
+        Aw = IndependentStatistic(2, x[:, :, 1:10], w[:, :, 1:10]; dims = 3)
+        Bw = IndependentStatistic(2, x[:, :, 11:20], w[:, :, 11:20]; dims = 3)
+        Cw = IndependentStatistic(2, x, w; dims = 3)
+
+        Mw = merge(Aw, Bw)
+        @test isapprox(mean(Mw), mean(Cw); rtol = 1.0e-10)
+        @test isapprox(var(Mw; corrected = false), var(Cw; corrected = false); rtol = 1.0e-10)
+
+        Aw2 = IndependentStatistic(2, x[:, :, 1:10], w[:, :, 1:10]; dims = 3)
+        merge!(Aw2, Bw)
+        @test isapprox(mean(Aw2), mean(Cw); rtol = 1.0e-10)
+        @test isapprox(var(Aw2; corrected = false), var(Cw; corrected = false); rtol = 1.0e-10)
+    end
 end

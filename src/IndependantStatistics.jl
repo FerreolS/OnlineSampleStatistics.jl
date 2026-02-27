@@ -342,6 +342,113 @@ function fit!(A::IndependentStatistic{T, N, K}, x::AbstractArray{T, N}, w::W) wh
     return A
 end
 
+"""
+    fit!(A::IndependentStatistic{T,N,K}, B::IndependentStatistic)
+
+Merge the accumulated statistics in `B` into `A` in-place.
+`A` must have compatible element type and size, and its number of moments `K`
+must be less than or equal to the one of `B`.
+"""
+function fit!(A::IndependentStatistic{T, N, K}, B::IndependentStatistic{TB, N, KB}) where {T, TB, N, K, KB}
+    K ≤ KB || throw(ArgumentError("fit! : order(B) = $KB is less than order(A) = $K"))
+    promote_type(T, TB) == T || throw(ArgumentError("fit! : incompatible element types $TB for $T"))
+    size(A) == size(B) || throw(DimensionMismatch("fit! : size(A) != size(B)"))
+
+    wA = weights(A)
+    wB = weights(B)
+    wA_mutable = wA isa MutableUniformArray
+    wB_mutable = wB isa MutableUniformArray
+    wA_mutable && !wB_mutable && throw(ArgumentError("fit! : cannot merge non-uniform weights into MutableUniformArray weights"))
+
+    mA = get_rawmoments(A)
+    mB = get_rawmoments(B)
+
+    uniform_new_weight = nothing
+    @inbounds for i in eachindex(get_rawmoments(A, 1), get_rawmoments(B, 1))
+        wa = wA_mutable ? StructuredArrays.value(wA) : wA[i]
+        wb = wB_mutable ? StructuredArrays.value(wB) : wB[i]
+        wnew = wa + wb
+
+        if wA_mutable
+            if uniform_new_weight === nothing
+                uniform_new_weight = wnew
+            else
+                wnew == uniform_new_weight || throw(ArgumentError("fit! : resulting weights are not uniform"))
+            end
+        else
+            wA[i] = wnew
+        end
+
+        wb == 0 && continue
+
+        μA = mA[1][i]
+        μB = mB[1][i]
+        iN = inv(wnew)
+        δBA = μB - μA
+        BoN = -wb * iN * δBA
+        AoN = wa * iN * δBA
+
+        if K ≥ 3
+            for p in K:-1:3
+                for k in 1:(p - 2)
+                    mA[p][i] += binomial(p, k) * (BoN^k * mA[p - k][i] + AoN^k * mB[p - k][i])
+                end
+                mA[p][i] += mB[p][i] + wa * BoN^p + wb * AoN^p
+            end
+        end
+
+        mA[1][i] -= BoN
+        if K ≥ 2
+            mA[2][i] += mB[2][i] + wa * abs2(BoN) + wb * abs2(AoN)
+        end
+    end
+
+    wA_mutable && setvalue!(wA, uniform_new_weight)
+    return A
+end
+
+"""
+    merge(A::UnivariateStatistic, B::UnivariateStatistic)
+
+Merge two univariate statistics by combining their data.
+
+Creates a copy of statistic `A` and fits it with the data from statistic `B`,
+returning a new merged statistic `C`.
+
+# Arguments
+- `A::UnivariateStatistic`: The first univariate statistic
+- `B::UnivariateStatistic`: The second univariate statistic to merge into `A`
+
+# Returns
+- `C::UnivariateStatistic`: A new statistic that is the result of merging `A` and `B`
+
+# See Also
+- [`merge!`](@ref): In-place version of merge
+
+"""
+function Base.merge(A::UnivariateStatistic, B::UnivariateStatistic)
+    C = deepcopy(A)
+    fit!(C, B)
+    return C
+end
+
+"""
+    merge!(A::UnivariateStatistic, B::UnivariateStatistic)
+
+Merge the statistics from univariate statistic `B` into `A`, updating `A` in-place.
+
+This operation combines the sample statistics from `B` into `A` by fitting `A` with the data 
+represented by `B`. After merging, `A` will contain aggregated statistics from both sources.
+
+# Arguments
+- `A::UnivariateStatistic`: The target statistic object to be updated (modified in-place)
+- `B::UnivariateStatistic`: The source statistic object to merge into `A`
+
+# Returns
+- `A::UnivariateStatistic`: The updated statistic object
+"""
+Base.merge!(A::UnivariateStatistic, B::UnivariateStatistic) = fit!(A, B)
+
 function _fit!(A::IndependentStatistic{T, D, 1}, b::AbstractArray{T, D}, wb::W) where {D, T <: Real, W <: Union{Real, AbstractArray{<:Real, D}}}
 
     wa = weights(A)
