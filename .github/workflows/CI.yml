@@ -112,4 +112,4 @@ jobs:
           version: "1"
       - uses: julia-actions/cache@v2
       - uses: julia-actions/julia-buildpkg@v1
-      - run: julia --project=@. --color=yes scripts/check_readme_examples.jl
+      - run: julia --project=@. --color=yes test/check_readme_examples.jl
