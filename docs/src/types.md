@@ -4,6 +4,12 @@
 
 `UnivariateStatistic{T,K}` tracks online moments of a scalar stream of type `T` up to order `K`.
 
+Common constructors:
+- `UnivariateStatistic(K)` empty statistic with `Float64` values and `Int` weights;
+- `UnivariateStatistic(K, x)` initialize from one sample (type inferred from `x`);
+- `UnivariateStatistic(K, x, w)` initialize from one weighted sample;
+- `UnivariateStatistic(K, xs, ws)` initialize from weighted arrays.
+
 Typical workflow:
 - create with desired moment order `K`;
 - update incrementally with `fit!`;
@@ -29,6 +35,18 @@ julia> nobs(s)
 
 julia> mean(s), var(s), skewness(s), kurtosis(s)
 (2.5, 1.6666666666666667, 0.0, -1.36)
+
+julia> s2 = UnivariateStatistic(Float64, 2, Float64, 1.5, 1.0)
+UnivariateStatistic{Float64, 2, Float64} with 2 moments
+  weight: 1.0
+  μ: 1.5
+  σ²: 0.0  σ: 0.0
+
+julia> s3 = UnivariateStatistic(2, 1.5, 3.0)
+UnivariateStatistic{Float64, 2, Float64} with 2 moments
+  weight: 3.0
+  μ: 1.5
+  σ²: 0.0  σ: 0.0
 ```
 ### Weighted UnivariateStatistic
 

@@ -3,7 +3,7 @@
     @testset "UnivariateStatistic Constructors" begin
 
         # Test constructor with default type
-        A = UnivariateStatistic(0.5, 2)
+        A = UnivariateStatistic(2, 0.5)
         @test typeof(A) <: UnivariateStatistic
         @test @inferred isnan(var(A))
         @test @inferred nobs(A) == 1
@@ -13,22 +13,29 @@
         @test typeof(B) <: UnivariateStatistic
 
 
-        @test A == UnivariateStatistic(Float64, 0.5, 2)
+        @test A == UnivariateStatistic(2, 0.5)
         @test A.rawmoments == [0.5, 0.0]
         @test A.weights == 1
         @test B.rawmoments == [0.0f0]
         @test B.weights == 0
 
-        A = UnivariateStatistic([0.0, 1, 2], 2)
+        A = UnivariateStatistic(2, [0.0, 1, 2])
         @test nobs(A) == 3
         @test @inferred mean(A) == 1.0
+
+        C = UnivariateStatistic(Float64, 2, 0.5)
+        @test C == UnivariateStatistic(Float64, 2, Int, 0.5, 1.0)
+
+        D = UnivariateStatistic(2, [0.0, 1, 2], ones(3))
+        @test nobs(D) == 3.0
+        @test @inferred mean(D) == 1.0
     end
 
 
     @testset "OnlineStatsBase API" begin
         using OnlineStatsBase
 
-        A = UnivariateStatistic(1, 2)
+        A = UnivariateStatistic(Float64, 2, 1)
         @test value(A) == [1, 0.0]
         @test empty!(A) == zero(A)
         fit!(A, ones(10))
@@ -36,7 +43,7 @@
     end
 
     @testset "fit! merge! tests for first two moments" begin
-        A = UnivariateStatistic(0.5, 2)
+        A = UnivariateStatistic(Float64, 2, 0.5)
         C = zero(A)
         fit!(C, ones(10))
         @test @inferred mean(C) == 1.0
@@ -47,7 +54,7 @@
         D = zero(typeof(A))
         fit!(D, zeros(10))
 
-        @test UnivariateStatistic(Float64, [1.0f0, 0.0f0], 2) == UnivariateStatistic([1.0, 0.0], 2)
+        @test UnivariateStatistic(Float64, 2, [1.0f0, 0.0f0]) == UnivariateStatistic(Float64, 2, [1.0, 0.0])
 
         merge!(C, D)
         @test @inferred mean(C) == 0.5
@@ -90,8 +97,8 @@
 
         x1 = x[1:(10^5)]
         x2 = x[(10^5 + 1):end]
-        B = UnivariateStatistic(x1, 4)
-        C = UnivariateStatistic(x2, 4)
+        B = UnivariateStatistic(4, x1)
+        C = UnivariateStatistic(4, x2)
         merge!(B, C)
         @test isapprox(A.rawmoments, B.rawmoments; rtol = 1.0e-6)
 
@@ -100,22 +107,19 @@
 
     @testset "Complex numbers" begin
         x = Complex.(1.0e9 .+ (randn(10^6)) .^ 2, randn(10^6))
-        @test_throws ArgumentError UnivariateStatistic(x, 4)
+        @test_throws ArgumentError UnivariateStatistic(4, x)
 
-        A = UnivariateStatistic(x, 2)
+        A = UnivariateStatistic(2, x)
         x1 = x[1:(10^5)]
         x2 = x[(10^5 + 1):end]
-        B = UnivariateStatistic(x1, 2)
-        C = UnivariateStatistic(x2, 2)
+        B = UnivariateStatistic(ComplexF64, 2, x1)
+        C = UnivariateStatistic(ComplexF64, 2, x2)
         merge!(B, C)
         @test isapprox(A.rawmoments, B.rawmoments; rtol = 1.0e-6)
     end
 
     @testset "error handling" begin
-        @test_throws ArgumentError UnivariateStatistic(2, -1)
-        @test_throws ArgumentError UnivariateStatistic(2, 0)
         @test_throws ArgumentError UnivariateStatistic(2, 1, -1)
-        @test_throws ArgumentError UnivariateStatistic(2, 1, 0)
         @test_throws ArgumentError merge!(UnivariateStatistic(Float32, 1), UnivariateStatistic(Float64, 1))
         @test_throws ArgumentError merge!(UnivariateStatistic(Float32, 2), UnivariateStatistic(Float64, 2))
     end
@@ -135,22 +139,22 @@
     end
 
     @testset "Weighted Data" begin
-        UnivariateStatistic(ones(Int, 10), (randn(10) .> 0), 4)
+        UnivariateStatistic(Float64, 4, ones(Int, 10), (randn(10) .> 0))
         x = randn(1_000)
         w = rand(size(x)...)
-        A = UnivariateStatistic(x, w, 4)
+        A = UnivariateStatistic(Float64, 4, x, w)
         @test nobs(A) ≈ sum(w)
         @test mean(A) ≈ sum(w .* x) ./ sum(w)
         @test isapprox(var(A, corrected = false), sum(w .* (x .- mean(A)) .^ 2) ./ sum(w); rtol = 1.0e-6)
         @test_logs (:warn, "The number of samples is not an integer. The variance is not corrected.") var(A)
 
 
-        A = UnivariateStatistic(Float64, Float64, 1)
+        A = UnivariateStatistic(Float64, 1, Float64)
         fit!(A, x, 2.0)
         @test @inferred(nobs(A)) ≈ 2 * length(x)
         @test @inferred(mean(A)) ≈ mean(x)
 
-        A = UnivariateStatistic(Float64, Float64, 2)
+        A = UnivariateStatistic(Float64, 2, Float64)
         fit!(A, Float32.(x), 2.0)
         @test @inferred(nobs(A)) ≈ 2 * length(x)
         @test @inferred(mean(A)) ≈ mean(Float32.(x))
@@ -161,8 +165,8 @@
         using Transducers
         x = randn(1_000)
         w = rand(size(x)...)
-        A = @inferred(fit!(UnivariateStatistic(Float64, Float64, 4), zip(x, w)))
-        B = foldxt(UnivariateStatistic(Float64, Float64, 4), zip(x, w))
+        A = @inferred(fit!(UnivariateStatistic(Float64, 4, Float64), zip(x, w)))
+        B = foldxt(UnivariateStatistic(Float64, 4, Float64), zip(x, w))
         @test A ≈ B
     end
 

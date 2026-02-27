@@ -11,7 +11,7 @@ This struct supports online (incremental) updates to the statistics.
 
 ## Example
 ```julia
-A = UnivariateStatistic([1.0, 2.0, 3.0],2,)
+A = UnivariateStatistic(2, [1.0, 2.0, 3.0])
 mean(A)  # Calculate the mean (2.0)
 var(A)  # Calculate the variance (1.0)
 fit!(A, 4.0)  # Add a new data point
@@ -25,10 +25,13 @@ mutable struct UnivariateStatistic{T, K, I, R} <: OnlineStatsBase.OnlineStat{T}
     function UnivariateStatistic{T, K, I}(weights::I, rawmoments::Vector{T}) where {T, K, I}
         K == length(rawmoments) || throw(ArgumentError("The length of rawmoments $(length(rawmoments)) must be equal to $K"))
         nonnegative(weights) || throw(ArgumentError("weights can't be negative"))
+        !(T <: Complex) || K < 3 || throw(ArgumentError("UnivariateStatistic : $K > 2 not implemented for complex numbers"))
+
         return new{T, K, I, typeof(rawmoments)}(weights, rawmoments)
     end
     function UnivariateStatistic{T, K, I}(weights::I, rawmoments::NTuple{K, T}) where {T, K, I}
         nonnegative(weights) || throw(ArgumentError("weights can't be negative"))
+        !(T <: Complex) || K < 3 || throw(ArgumentError("UnivariateStatistic : $K > 2 not implemented for complex numbers"))
         r = vcat(rawmoments...)
         return new{T, K, I, typeof(r)}(weights, r)
     end
@@ -37,53 +40,143 @@ end
 
 
 """
-    UnivariateStatistic(x::T,K::Int) where {T<:Number}
+    UnivariateStatistic(T::Type, K::Int)
 
-Constructs a `UnivariateStatistic` object of type `T` with `K` moments from a single sample `x`. 
-The first moment (the mean) is then `x` and the remaining moments are zeros of type `T`. 
-The weight counts the number of sample set to `1`.
+Construct an empty `UnivariateStatistic` with element type `T`, moment order `K`,
+and default weight type `Int`.
 
 ---
 
-    UnivariateStatistic(K::Int, T::Type)
+    UnivariateStatistic(T::Type, K::Int, I::Type)
 
-Constructs an empty `UnivariateStatistic` object of type `T` with `K` moments.
+Construct an empty `UnivariateStatistic` with element type `T`, moment order `K`,
+and weight type `I`.
+
+    UnivariateStatistic(K::Int, x)
+
+Construct from one sample `x` with moment order `K` and default unit weight.
+
+---
+
+    UnivariateStatistic(K::Int, x, w)
+
+Construct from one sample `x` with one weight `w` and moment order `K`.
+
+---
+
+    UnivariateStatistic(T::Type, K::Int, I::Type, x, w)
+
+Construct from one sample `x` and one weight `w` with explicit value type `T`,
+moment order `K`, and weight type `I`.
+
+---
+
+    UnivariateStatistic(T::Type, K::Int, x)
+
+Construct from one sample `x` (converted to `T`) with default weight type `Int`
+and unit weight.
+
+---
+
+    UnivariateStatistic(T::Type, K::Int, I::Type, x, w)
+
+Construct from one sample `x` and one weight `w` with element type `T`, moment
+order `K`, and weight type `I`.
+
+---
+
+    UnivariateStatistic(T::Type, K::Int, x::AbstractArray)
+
+Construct from an array of samples converted to `T`.
+
+---
+
+    UnivariateStatistic(K::Int, x::AbstractArray)
+
+Construct from an array of samples with moment order `K`, inferring value type
+from `x` (integer arrays are promoted to `Float64`).
+
+---
+
+    UnivariateStatistic(K::Int, x::AbstractArray, w::AbstractArray)
+
+Construct from arrays of samples and weights with moment order `K`.
+
+---
+
+    UnivariateStatistic(T::Type, K::Int, I::Type, x::AbstractArray, w::AbstractArray)
+
+Construct from arrays of samples and weights.
 
 ---
 
     UnivariateStatistic(K::Int)
 
-Constructs an empty `UnivariateStatistic` object of type Float64 with `K` moments.
-
----
-
-    UnivariateStatistic(::Type{T}, x, K::Int) where {T}
-
-Constructs a `UnivariateStatistic` object  of type `T` with a single sample `x`. 
-`x`will be converted to type `T` is needed.
-
+Construct an empty `UnivariateStatistic` of type `Float64` and order `K`.
 """
-UnivariateStatistic(x::T, K::Int) where {T <: AbstractFloat} = UnivariateStatistic(x, 1, K)
-UnivariateStatistic(x::T, K::Int) where {T <: Number} = UnivariateStatistic(Float64(x), 1, K)
-UnivariateStatistic(T::Type, K::Int) = UnivariateStatistic(T, Int, K)
+UnivariateStatistic(T::Type, K::Int) = UnivariateStatistic(T, K, Int)
 UnivariateStatistic(K::Int) = UnivariateStatistic(Float64, K)
-UnivariateStatistic(::Type{T}, x, K::Int) where {T} = UnivariateStatistic(T.(x), K)
-UnivariateStatistic(x::AbstractArray{T}, K::Int) where {T <: Number} = UnivariateStatistic(Float64.(x), 1, K)
 
+function UnivariateStatistic(T::Type, K::Int, ::Type{I}) where {I <: Number}
+    K > 0 || throw(ArgumentError("Moment of order $K <= 0 undefined"))
+    return build_from_rawmoments(zero(I), zeros(T, K))
+end
+
+UnivariateStatistic(T::Type, K::Int, x::Number) = UnivariateStatistic(T, K, Int, x, 1)
+
+UnivariateStatistic(K::Int, x::T) where {T <: Number} = UnivariateStatistic(T, K, x)
+UnivariateStatistic(K::Int, x::Integer) = UnivariateStatistic(Float64, K, Float64(x))
+
+UnivariateStatistic(T::Type, K::Int, x::AbstractArray) = UnivariateStatistic(T, K, Int, x)
+UnivariateStatistic(K::Int, x::AbstractArray{T}) where {T <: Number} = UnivariateStatistic(T, K, x)
+UnivariateStatistic(K::Int, x::AbstractArray{T}) where {T <: Integer} = UnivariateStatistic(Float64, K, x)
+
+function UnivariateStatistic(T::Type{<:Number}, K::Int, ::Type{I}, x::AbstractArray) where {I <: Number}
+    A = UnivariateStatistic(T, K, I)
+    fit!(A, T.(x))
+    return A
+end
+
+
+UnivariateStatistic(K::Int, x::T, w::Number) where {T <: Number} = UnivariateStatistic(T, K, typeof(w), x, w)
+UnivariateStatistic(K::Int, x::Integer, w::Number) = UnivariateStatistic(Float64, K, typeof(w), Float64(x), w)
+
+UnivariateStatistic(K::Int, x::AbstractArray{T}, w::AbstractArray{TW}) where {T <: Number, TW <: Number} = UnivariateStatistic(T, K, TW, x, w)
+UnivariateStatistic(K::Int, x::AbstractArray{T}, w::AbstractArray{TW}) where {T <: Integer, TW <: Number} = UnivariateStatistic(Float64, K, TW, x, w)
+
+function UnivariateStatistic(T::Type, K::Int, ::Type{I}, x::Number, w::Number) where {I <: Number}
+    !(T <: Complex) || K < 3 || throw(ArgumentError("UnivariateStatistic : $K > 2 not implemented for complex numbers"))
+    return build_from_rawmoments(I(w), vcat(T(x), zeros(T, K - 1)))
+end
+
+function UnivariateStatistic(T::Type, K::Int, ::Type{I}, x::AbstractArray, w::AbstractArray) where {I <: Number}
+    size(x) == size(w) || throw(ArgumentError("UnivariateStatistic : size(x) != size(w)"))
+    ww = I == Bool ? Int.(w) : I.(w)
+    A = UnivariateStatistic(T, K, eltype(ww))
+    nonnegative(ww) || throw(ArgumentError("weights can't be negative"))
+    fit!(A, T.(x), ww)
+    return A
+end
+
+UnivariateStatistic(T::Type, K::Int, x::AbstractArray, w::AbstractArray) = UnivariateStatistic(T, K, eltype(w), x, w)
+
+# Backward-compatible wrappers
+#= 
+@deprecate UnivariateStatistic(x::T, K::Int) where {T <: Number} UnivariateStatistic(T <: AbstractFloat ? T : Float64, K, T <: AbstractFloat ? x : Float64(x))
+@deprecate UnivariateStatistic(::Type{T}, x, K::Int) where {T} UnivariateStatistic(T, K, x)
+@deprecate UnivariateStatistic(x::AbstractArray{T}, K::Int) where {T <: Real} UnivariateStatistic(Float64, K, Float64.(x))
+@deprecate UnivariateStatistic(x::AbstractArray{T}, K::Int) where {T <: Complex} UnivariateStatistic(T, K, x)
+@deprecate UnivariateStatistic(x::T, weight::Number, K::Int) where {T <: Number} UnivariateStatistic(T <: AbstractFloat ? T : Float64, K, typeof(weight), T <: AbstractFloat ? x : Float64(x), weight)
+@deprecate UnivariateStatistic(T::Type, TW::Type, K::Int) UnivariateStatistic(T, K, TW)
+@deprecate UnivariateStatistic(x::AbstractArray{T}, w::AbstractArray, K::Int) where {T <: Real} UnivariateStatistic(Float64, K, Float64.(x), w)
+@deprecate UnivariateStatistic(x::AbstractArray{T}, w::AbstractArray{TW}, K::Int) where {T <: Complex, TW <: Number} UnivariateStatistic(T, K, TW, x, w)
+ =#
 """
     UnivariateStatistic(K::Int, x::AbstractArray{T}) where {T<:Number}
 
 Constructs a UnivariateStatistic object storing the first `K` moments  from the vector of samples `x`.
 
 """
-function UnivariateStatistic(x::AbstractArray{T}, K::Int) where {T <: Union{AbstractFloat, Complex}}
-    K > 0 || throw(ArgumentError("Moment of order $K <= 0 undefined"))
-    !(T <: Complex) || K < 3 || throw(ArgumentError("UnivariateStatistic : $K > 2 not implemented for complex numbers"))
-    A = UnivariateStatistic(T, K)
-    fit!(A, x)
-    return A
-end
-
 function build_from_rawmoments(weights::I, rawmoments::Vector{T}) where {T, I}
     K = length(rawmoments)
     return UnivariateStatistic{T, K, I}(weights, rawmoments)
@@ -91,44 +184,6 @@ end
 
 build_from_rawmoments(weights, rawmoments...) = build_from_rawmoments(weights, vcat(rawmoments...))
 #UnivariateStatistic{T,K,I}(weights::I, rawmoments...) where {T,K,I} = UnivariateStatistic{T,K,I}(weights, vcat(rawmoments...))
-
-"""
-    UnivariateStatistic(x::T, weight::Number, K::Int) where {T<:Number}
-
-Constructs a `UnivariateStatistic` object with `K` moments of type `T` from a single sample `x` and a weight `weight`.
-The first moment (the mean) is then `x` and the remaining moments are zeros of type `T`.
-"""
-function UnivariateStatistic(x::T, weight::Number, K::Int) where {T <: Number}
-    K > 0 || throw(ArgumentError("Moment of order $K <= 0 undefined"))
-    return build_from_rawmoments(weight, vcat(x, zeros(T, K - 1)))
-end
-"""
-    UnivariateStatistic(T::Type, TW::Type, K::Int)
-Constructs an empty `UnivariateStatistic` object of type `T` with `K` moments and weights of type `TW`.
-"""
-UnivariateStatistic(T::Type, TW::Type, K::Int) = build_from_rawmoments(zero(TW), zeros(T, K))
-
-"""
-    UnivariateStatistic(x::AbstractArray{T}, w::AbstractArray, K::Int) where {T<:Number}      
-Constructs a `UnivariateStatistic` object of type `T` with `K` moments from a vector of samples `x` and a vector of weights `w`.
-"""
-UnivariateStatistic(x::AbstractArray{T}, w::AbstractArray, K::Int) where {T <: Number} = UnivariateStatistic(Float64.(x), w, K)
-
-function UnivariateStatistic(x::AbstractArray{T}, w::AbstractArray{TW}, K::Int) where {T <: Union{AbstractFloat, Complex}, TW <: Number}
-
-    size(x) == size(w) || throw(ArgumentError("UnivariateStatistic : size(x) != size(w)"))
-    K > 0 || throw(ArgumentError("Moment of order $K <= 0 undefined"))
-    !(T <: Complex) || K < 3 || throw(ArgumentError("UnivariateStatistic : $K > 2 not implemented for complex numbers"))
-    if eltype(w) == Bool
-        w = Int.(w)
-        A = UnivariateStatistic(T, Int, K)
-    else
-        A = UnivariateStatistic(T, TW, K)
-    end
-    nonnegative(w) || throw(ArgumentError("weights can't be negative"))
-    fit!(A, x, w)
-    return A
-end
 
 """
     nonnegative(x)

@@ -26,7 +26,7 @@ using ZippedArrays, StructuredArrays
         fit!(A, data)
         @test A == IndependentStatistic(data, 5)
         @test @inferred(order(A)) == 5
-        B = [UnivariateStatistic(d, 5) for d in data]
+        B = [UnivariateStatistic(5, d) for d in data]
         @test @inferred(order(B)) == 5
         @test A == B
         @test @inferred(get_rawmoments(A, 1)) == @inferred(get_rawmoments(B, 1))
