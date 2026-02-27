@@ -27,60 +27,69 @@ Designed for scenarios where data arrives in a streaming fashion or when memory 
 
 ## Usage
 
-It  mainly implements of two types: `UnivariateStatistic`  and `IndependentStatistic`. For both types,
-adding samples to the statistic is done using the `fit!` methods.  It supports weighted sample.
-`StatsBase` methods are used to query `weights`, `nobs`, `mean`, `var`, `std`, `skewness` and `kurtosis`.
+It  mainly implements of two types: `UnivariateStatistic`  and `IndependentStatistic`. For both types, adding samples to the statistic is done using the `fit!` methods.  It supports weighted sample.`Statistics` and `StatsBase` methods are used to query `mean`, `var`, `std`, `skewness`, `kurtosis`, `wsum`, `weights`and  `nobs`.
+
+`UnivariateStatistic` and `IndependentStatistic` objects support pretty-printing via `show` methods.
+
 
 ### Univariate Statistics
 
 `UnivariateStatistic{T,K}` tracks `K` statistical moments of a univariate data stream of type `T`.  It is defined as a subtype of `OnlineStats{T}` from  [OnlineStats.jl](https://github.com/joshday/OnlineStats.jl) to leverage its functionality, including the [Transducers.jl](https://github.com/JuliaFolds/Transducers.jl)   methods for parallel processing.
 
-```julia
-using OnlineSampleStatistics
-
-# Create a univariate statistic to track up to 4 moments
-stat = UnivariateStatistic(4)
-
-# Add data incrementally
-fit!(stat, 1.0)                                             # single sample
-fit!(stat, [2.0, 3.0, 4.0])                                 # array of samples
-fit!(stat, skipmissing( [missing, 5.0, 6.0, 7.0, missing])) # iterator of samples
-
-# Compute statistics
-println("Number of samples: ", nobs(stat)) 
-println("Mean: ", mean(stat))
-println("Variance: ", var(stat))
-println("Skewness: ", skewness(stat))
-println("Kurtosis: ", kurtosis(stat))
-
-# Compute weighted statistics
-fit!(stat, 1.0,2.0)                           # single sample with weight
-fit!(stat, [2.0, 3.0, 4.0], [1.0, 2.0, 3.0])  # array of samples with weights
-```
-
-### Display and Formatting
-
-`UnivariateStatistic` and `IndependentStatistic` objects support pretty-printing via `show` methods:
-
 ```julia-repl
 julia> using OnlineSampleStatistics
 
-julia> A = UnivariateStatistic(4)
+julia> # Create a univariate statistic to track up to 4 moments
+       stat = UnivariateStatistic(4)
 UnivariateStatistic{Float64, 4, Int64} with 4 moments
   nobs: 0
 
-julia> fit!(A, randn(100));
 
-julia> A  # display with computed statistics
+julia> # Add data incrementally
+       fit!(stat, 1.0)                                             # single sample
 UnivariateStatistic{Float64, 4, Int64} with 4 moments
-  nobs: 100
-  μ: -0.017880182653312513
-  σ²: 0.8035138122170292  σ: 0.9009051633499137
-  skewness: 0.016842291132359345
-  kurtosis: -0.8677423250519558
+  nobs: 1
+  μ: 1.0
+  σ²: 0.0  σ: 0.0
+  skewness: NaN
+  kurtosis: NaN
 
-julia> summary(A)  # detailed summary
-"UnivariateStatistic{Float64,4,Int64}  with 4 moments"
+julia> fit!(stat, [2.0, 3.0, 4.0]);                                # array of samples
+
+julia> fit!(stat, skipmissing( [missing, 5.0, 6.0, 7.0, missing]));# iterator of samples
+
+julia> # Compute statistics
+       println("Number of samples: ", nobs(stat))
+Number of samples: 7
+
+julia> println("Mean: ", mean(stat))
+Mean: 4.0
+
+julia> println("Variance: ", var(stat))
+Variance: 4.666666666666667
+
+julia> println("Skewness: ", skewness(stat))
+Skewness: -1.2688263138573217e-16
+
+julia> println("Kurtosis: ", kurtosis(stat))
+Kurtosis: -1.2500000000000002
+
+julia> # Compute weighted statistics
+       fit!(stat, 1.0,2.0)                           # single sample with weight
+UnivariateStatistic{Float64, 4, Int64} with 4 moments
+  nobs: 9
+  μ: 3.3
+  σ²: 4.7  σ: 2.2
+  skewness: 0.36
+  kurtosis: -1.3
+
+julia> fit!(stat, [2.0, 3.0, 4.0], [1.0, 2.0, 3.0])  # array of samples with weights
+UnivariateStatistic{Float64, 4, Int64} with 4 moments
+  nobs: 15
+  μ: 3.3
+  σ²: 3.0  σ: 1.7
+  skewness: 0.39
+  kurtosis: -0.55
 ```
 
 ### Independent Statistics
@@ -91,15 +100,19 @@ julia> summary(A)  # detailed summary
 julia> using OnlineSampleStatistics
 
 julia> x = randn(3, 4, 10); #  array of samples
+
 julia> w = rand(3, 4, 10);  #  array of weights
+
 julia> stat = IndependentStatistic(x,w, 2; dims=3); # Tracking 2  statistical moments along dimension dims=3.
 
-julia> size(stat)
-(3, 4, 1)
+julia> summary(stat)
+"3×4×1 IndependentStatistic{Float64, 3, 2, Float64} with 2 moments"
 
-julia> mean(stat)           # weighted mean
-3×4×1 Array{Float64, 3}:
-...
+julia> wmean = mean(stat);           # weighted mean
+
+julia> summary(wmean)
+"3×4×1 Array{Float64, 3}"
+
 ```
 
 ## Comparison with [OnlineStats.jl](https://github.com/joshday/OnlineStats.jl)
