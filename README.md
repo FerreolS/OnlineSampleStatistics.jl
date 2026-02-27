@@ -34,7 +34,7 @@ It mainly provides two types: `UnivariateStatistic` and `IndependentStatistic`. 
 
 ### Univariate Statistics
 
-`UnivariateStatistic{T,K}` tracks `K` statistical moments of a univariate data stream of type `T`. It is defined as a subtype of `OnlineStat{T}` from [OnlineStats.jl](https://github.com/joshday/OnlineStats.jl) to leverage its functionality, including [Transducers.jl](https://github.com/JuliaFolds/Transducers.jl) methods for parallel processing.
+`UnivariateStatistic{T,K}` tracks `K` statistical moments (of type `T`) of a data stream. It is defined as a subtype of `OnlineStat{T}` from [OnlineStats.jl](https://github.com/joshday/OnlineStats.jl) to leverage its functionality, including [Transducers.jl](https://github.com/JuliaFolds/Transducers.jl) methods for parallel processing.
 
 ```julia-repl
 julia> using OnlineSampleStatistics

@@ -15,9 +15,9 @@ function Base.show(io::IO, ::MIME"text/plain", A::UnivariateStatistic{T, K, I}) 
     n = nobs(A)
     println(io, "UnivariateStatistic{$T, $K, $I} with $K moments")
     if I <: Integer
-        println(io, "  nobs: $n")
+        print(io, "  nobs: $n")
     else
-        println(io, "  weight: $(round(n; sigdigits = sig_digits))")
+        print(io, "  weight: $(round(n; sigdigits = sig_digits))")
     end
 
     if n == 0
@@ -26,6 +26,7 @@ function Base.show(io::IO, ::MIME"text/plain", A::UnivariateStatistic{T, K, I}) 
 
     # Always show mean
     μ = round(mean(A); sigdigits = sig_digits)
+    println(io)
     print(io, "  μ: ", sprint(show, μ))
 
     # Show variance and std if K ≥ 2
