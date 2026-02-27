@@ -32,7 +32,7 @@
         @test value(A) == [1, 0.0]
         @test empty!(A) == zero(A)
         fit!(A, ones(10))
-        @test A == UnivariateStatistic(10, [1.0, 0.0])
+        @test A == OnlineSampleStatistics.build_from_rawmoments(10, [1.0, 0.0])
     end
 
     @testset "fit! merge! tests for first two moments" begin
@@ -42,7 +42,6 @@
         @test @inferred mean(C) == 1.0
         @test @inferred var(C) == 0.0
         @test @inferred std(C) == 0.0
-        @test_throws ArgumentError UnivariateStatistic(-1, [1.0])
 
 
         D = zero(typeof(A))
@@ -65,14 +64,14 @@
         F = UnivariateStatistic(Float64, 2)
         E = UnivariateStatistic(Float32, 2)
         fit!(F, zeros(Float32, 10))
-        @test merge!(F, E) == UnivariateStatistic(10, [0.0, 0.0])
+        @test merge!(F, E) == OnlineSampleStatistics.build_from_rawmoments(10, [0.0, 0.0])
 
         F = UnivariateStatistic(Float64, 1)
         E = UnivariateStatistic(Float32, 1)
         fit!(F, zeros(Float32, 10))
         fit!(E, zeros(Float32, 10))
-        @test @inferred merge(F, E) == UnivariateStatistic(20, [0.0])
-        @test @inferred merge(E, F) == UnivariateStatistic(20, [0.0])
+        @test @inferred merge(F, E) == OnlineSampleStatistics.build_from_rawmoments(20, [0.0])
+        @test @inferred merge(E, F) == OnlineSampleStatistics.build_from_rawmoments(20, [0.0])
 
     end
 

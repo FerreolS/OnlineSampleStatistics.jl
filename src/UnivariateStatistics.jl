@@ -84,20 +84,12 @@ function UnivariateStatistic(x::AbstractArray{T}, K::Int) where {T <: Union{Abst
     return A
 end
 
-"""
-    UnivariateStatistic(weights::I, rawmoments::Vector{T}) where {T,I}
-
-Constructs a `UnivariateStatistic` object of type `T` with moments given in `rawmoments`.
-The `weights` is the sum of weights of the samples that were used to construct `rawmoments`
-.
-"""
-
-function UnivariateStatistic(weights::I, rawmoments::Vector{T}) where {T, I}
+function build_from_rawmoments(weights::I, rawmoments::Vector{T}) where {T, I}
     K = length(rawmoments)
     return UnivariateStatistic{T, K, I}(weights, rawmoments)
 end
 
-UnivariateStatistic{T, K, I}(weights::I, rawmoments...) where {T, K, I} = UnivariateStatistic{T, K, I}(weights, rawmoments)
+build_from_rawmoments(weights, rawmoments...) = build_from_rawmoments(weights, vcat(rawmoments...))
 #UnivariateStatistic{T,K,I}(weights::I, rawmoments...) where {T,K,I} = UnivariateStatistic{T,K,I}(weights, vcat(rawmoments...))
 
 """
@@ -108,13 +100,13 @@ The first moment (the mean) is then `x` and the remaining moments are zeros of t
 """
 function UnivariateStatistic(x::T, weight::Number, K::Int) where {T <: Number}
     K > 0 || throw(ArgumentError("Moment of order $K <= 0 undefined"))
-    return UnivariateStatistic(weight, vcat(x, zeros(T, K - 1)))
+    return build_from_rawmoments(weight, vcat(x, zeros(T, K - 1)))
 end
 """
     UnivariateStatistic(T::Type, TW::Type, K::Int)
 Constructs an empty `UnivariateStatistic` object of type `T` with `K` moments and weights of type `TW`.
 """
-UnivariateStatistic(T::Type, TW::Type, K::Int) = UnivariateStatistic(zero(TW), zeros(T, K))
+UnivariateStatistic(T::Type, TW::Type, K::Int) = build_from_rawmoments(zero(TW), zeros(T, K))
 
 """
     UnivariateStatistic(x::AbstractArray{T}, w::AbstractArray, K::Int) where {T<:Number}      
@@ -153,7 +145,7 @@ nonnegative(x::AbstractArray) = mapreduce(nonnegative, &, x)
     return an empty UnivariateStatistic of type `T` with `K` moments and weights of type `I`.
 """
 Base.zero(::T) where {T <: UnivariateStatistic} = zero(T)
-Base.zero(::Type{UnivariateStatistic{T, K, I, L}}) where {T, K, I, L} = UnivariateStatistic(zero(I), zeros(T, K))
+Base.zero(::Type{UnivariateStatistic{T, K, I, L}}) where {T, K, I, L} = build_from_rawmoments(zero(I), zeros(T, K))
 
 """
     empty!(A::UnivariateStatistic)

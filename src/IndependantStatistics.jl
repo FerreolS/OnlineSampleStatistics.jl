@@ -1,4 +1,4 @@
-import ZippedArrays: ZippedArray
+import ZippedArrays: ZippedArray, ZippedArrays
 import StructuredArrays
 import StructuredArrays: MutableUniformArray, setvalue!
 #= getters on AbstractArrays that are not  IndependentStatistic =#
@@ -55,6 +55,8 @@ order(::AbstractArray{<:UnivariateStatistic{T, K}}) where {T, K} = K
 
 IndependentStatistic{T, N, K, W} = ZippedArray{UnivariateStatistic{T, K, W}, N, K2, I, A} where {I, A, K2}
 
+ZippedArrays.build(::Type{<:UnivariateStatistic}, args...) = build_from_rawmoments(args...)
+ZippedArrays.build(::Type{<:UnivariateStatistic}, args::Tuple) = build_from_rawmoments(args...)
 
 #= constructor for IndependentStatistic =#
 IndependentStatistic(sz::NTuple{N, Int}, K::Int) where {N} = IndependentStatistic(Float64, sz, K)
