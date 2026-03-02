@@ -254,6 +254,7 @@ function get_rawmoments(A::UnivariateStatistic{T, K, I}, k::Int) where {T, K, I}
     k ≤ K || throw(ArgumentError("$k moments are not available for type $(typeof(A))"))
     return A.rawmoments[k]
 end
+get_rawmoments(A::UnivariateStatistic{T, K, I, R}) where {T, K, I, R} = [get_rawmoments(A, k) for k in 1:K]
 
 """
     get_moments(A::UnivariateStatistic, k) -> Number
