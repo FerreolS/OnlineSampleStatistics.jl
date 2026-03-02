@@ -198,3 +198,43 @@ using ZippedArrays, StructuredArrays
         @test isapprox(var(Aw2; corrected = false), var(Cw; corrected = false); rtol = 1.0e-10)
     end
 end
+
+@testset "build_from_rawmoments Tests" begin
+    using OnlineSampleStatistics: build_from_rawmoments, get_rawmoments
+    @testset "build_from_rawmoments with Int weights" begin
+        weights = zeros(Int, 3, 3)
+        rawmoments = (zeros(3, 3), zeros(3, 3))
+        result = build_from_rawmoments(weights, rawmoments)
+        @test result isa ZippedArray
+        @test size(result) == (3, 3)
+        @test typeof(result) <: ZippedArray{UnivariateStatistic{Float64, 2, Int}}
+    end
+
+    @testset "build_from_rawmoments with Float64 weights" begin
+        weights = zeros(Float64, 2, 4)
+        rawmoments = (zeros(2, 4), zeros(2, 4), zeros(2, 4))
+        result = build_from_rawmoments(weights, rawmoments)
+        @test result isa ZippedArray
+        @test size(result) == (2, 4)
+        @test typeof(result) <: ZippedArray{UnivariateStatistic{Float64, 3, Float64}}
+    end
+
+    @testset "build_from_rawmoments with single moment" begin
+        weights = zeros(Int, 5)
+        rawmoments = (zeros(5),)
+        result = build_from_rawmoments(weights, rawmoments)
+        @test result isa ZippedArray
+        @test size(result) == (5,)
+        @test typeof(result) <: ZippedArray{UnivariateStatistic{Float64, 1, Int}}
+    end
+
+    @testset "build_from_rawmoments preserves data" begin
+        weights = ones(Int, 2, 2)
+        m1 = rand(2, 2)
+        m2 = rand(2, 2)
+        rawmoments = (m1, m2)
+        result = build_from_rawmoments(weights, rawmoments)
+        @test get_rawmoments(result, 1) == m1
+        @test get_rawmoments(result, 2) == m2
+    end
+end

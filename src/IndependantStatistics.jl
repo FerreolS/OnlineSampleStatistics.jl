@@ -78,6 +78,11 @@ function IndependentStatistic(::Type{T}, K::Int, ::Type{TW}, sz::NTuple{N, Int})
     return ZippedArray{UnivariateStatistic{T, K, eltype(weights)}}(weights, rawmoments...)
 end
 
+function build_from_rawmoments(weights::I, rawmoments::NTuple{K, <:AbstractArray{T, N}}) where {T, I, K, N}
+    return ZippedArray{UnivariateStatistic{T, K, eltype(weights)}}(weights, rawmoments...)
+end
+
+
 @deprecate IndependentStatistic(sz::NTuple{N, Int}, K::Int) where {N} IndependentStatistic(K, sz)
 @deprecate IndependentStatistic(::Type{T}, sz::NTuple{N, Int}, K::Int) where {T, N} IndependentStatistic(T, K, sz)
 @deprecate IndependentStatistic(::Type{T}, sz::NTuple{N, Int}, ::Type{TW}, K::Int) where {TW, T, N} IndependentStatistic(T, K, TW, sz)
