@@ -291,7 +291,7 @@ function _fit!(A::IndependentStatistic{T, D, 2}, b::AbstractArray{T, D}) where {
 end
 
 
-@generated function _fit!(A::IndependentStatistic{T, D, P}, b::AbstractArray{T, D}) where {D, P, T <: Number}
+@generated function _fit2!(A::I, b::AbstractArray{T, D}) where {D, P, T <: Number, I <: IndependentStatistic{T, D, P}}
     code = Expr(:block)
     push!(
         code.args, quote
@@ -316,6 +316,62 @@ end
         end
     )
     push!(code.args, :(return A))
+    return code
+end
+
+
+function MomentsExpression(P::Int)
+    code = Expr(:block)
+    if P ≤ 2
+        return code
+    end
+    for p in P:-1:3
+        push!(code.args, :(get_rawmoments(A, $p)[i] += wai * BoN^$p + AoN^$p))
+        for k in 1:(p - 2)
+            push!(code.args, :(get_rawmoments(A, $p)[i] += binomial($p, $k) * get_rawmoments(A, $p - $k)[i] * BoN^$k))
+        end
+    end
+    return code
+end
+
+@generated function _fit!(A::I, b::AbstractArray{T, D}) where {D, P, T <: Number, I <: IndependentStatistic{T, D, P}}
+    code = Expr(:block)
+    push!(
+        code.args, quote
+            P > 1 || throw(ArgumentError("P must be greater than 1"))
+            wa = weights(A)
+            m1 = get_rawmoments(A, 1)
+        end
+    )
+    if I.parameters[5].parameters[1] <: MutableUniformArray
+        push!(code.args, :(MWAI = first(wa)))
+        push!(code.args, :(MNI = inv.(first(increment_weights!(A, 1)))))
+        NI = :(MNI)
+        WAI = :(wai = MWAI)
+        waupdate = :()
+    else
+        WAI = :(wai = wa[i])
+        NI = :(inv(wa[i] + 1))
+        waupdate = :(wa[i] += 1)
+    end
+
+    push!(
+        code.args, quote
+            @inbounds @simd for i in eachindex(m1, b)
+                iN = $NI
+                $WAI
+                δBA = (b[i] - m1[i])
+                BoN = -1 * iN * δBA
+                m1[i] -= BoN
+                AoN = wai * iN * δBA
+                $(MomentsExpression(P))
+                get_rawmoments(A, 2)[i] += wai * abs2(BoN) + abs2(AoN)
+                $waupdate
+            end
+            return A
+        end
+    )
+
     return code
 end
 
@@ -486,6 +542,22 @@ function _fit!(A::IndependentStatistic{T, D, 1}, b::AbstractArray{T, D}, wb::W) 
     return A
 end
 
+
+function MomentsExpressionW(P::Int)
+    code = Expr(:block)
+    if P ≤ 2
+        return code
+    end
+    for p in P:-1:3
+        push!(code.args, :(get_rawmoments(A, $p)[i] += wai * BoN^$p + wbi * AoN^$p))
+        for k in 1:(p - 2)
+            push!(code.args, :(get_rawmoments(A, $p)[i] += binomial($p, $k) * get_rawmoments(A, $p - $k)[i] * BoN^$k))
+        end
+    end
+    return code
+end
+
+
 @generated function _fit!(A::I, b::AbstractArray{T, D}, wb::W) where {P, D, T <: Real, I <: IndependentStatistic{T, D, P}, W <: Union{Real, AbstractArray{<:Real, D}}}
     code = Expr(:block)
     if W <: AbstractArray
@@ -535,7 +607,7 @@ end
                 BoN = -$WBI * iN * δBA
                 m1[i] -= BoN
                 AoN = wai * iN * δBA
-                $(MomentsExpression(P))
+                $(MomentsExpressionW(P))
                 get_rawmoments(A, 2)[i] += wai * abs2(BoN) + wbi * abs2(AoN)
                 $waupdate
             end
@@ -543,19 +615,5 @@ end
         end
     )
 
-    return code
-end
-
-function MomentsExpression(P::Int)
-    code = Expr(:block)
-    if P ≤ 2
-        return code
-    end
-    for p in P:-1:3
-        push!(code.args, :(get_rawmoments(A, $p)[i] += wai * BoN^$p + wbi * AoN^$p))
-        for k in 1:(p - 2)
-            push!(code.args, :(get_rawmoments(A, $p)[i] += binomial($p, $k) * get_rawmoments(A, $p - $k)[i] * BoN^$k))
-        end
-    end
     return code
 end
