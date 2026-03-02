@@ -40,6 +40,10 @@
         @test empty!(A) == zero(A)
         fit!(A, ones(10))
         @test A == OnlineSampleStatistics.build_from_rawmoments(10, [1.0, 0.0])
+
+        G = OnlineSampleStatistics.build_from_rawmoments(3, [1.0, 2.0, 3.0, 4.0])
+        @test @inferred(OnlineSampleStatistics.get_rawmoments(G)) == [1.0, 2.0, 3.0, 4.0]
+        @test length(OnlineSampleStatistics.get_rawmoments(G)) == 4
     end
 
     @testset "fit! merge! tests for first two moments" begin
