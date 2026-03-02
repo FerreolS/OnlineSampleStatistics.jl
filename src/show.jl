@@ -54,7 +54,7 @@ function Base.show(io::IO, ::MIME"text/plain", A::UnivariateStatistic{T, K, I}) 
 end
 
 # Compact display for REPL and inline use
-Base.show(io::IO, A::UnivariateStatistic{T, 1}) where {T} = mean(A)
+Base.show(io::IO, A::UnivariateStatistic{T, 1}) where {T} = print(io, mean(A))
 function Base.show(io::IO, A::UnivariateStatistic{T, K}) where {T, K}
     error_digits = get(io, :error_digits, 2)
     return print(io, mean(A), " ± ", round(std(A; corrected = false), sigdigits = error_digits))
