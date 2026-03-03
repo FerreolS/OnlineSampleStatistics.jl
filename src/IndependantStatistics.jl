@@ -203,6 +203,14 @@ function Statistics.var(A::IndependentStatistic{T, N, K, I}; corrected = true) w
 end
 
 
+"""
+     std(A::IndependentStatistic; corrected=true)
+Compute the sample standard deviation of a `A`, from its variance (corrected by default).
+
+"""
+Statistics.std(A::IndependentStatistic; corrected = true) = sqrt.(var(A; corrected = corrected))
+
+
 function StatsBase.skewness(A::IndependentStatistic{T, N, K}) where {T, N, K}
     3 ≤ K || throw(ArgumentError("third moment is not available for type $(typeof(A))"))
     W = nobs(A)

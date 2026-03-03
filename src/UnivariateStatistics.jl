@@ -295,11 +295,12 @@ function Statistics.var(A::UnivariateStatistic{T, K, W}; corrected = true) where
 end
 
 """
-    std(A::UnivariateStatistic)
-Compute the uncorrected sample standard deviation of a `A`. 
+     std(A::UnivariateStatistic; corrected=true)
+Compute the sample standard deviation of a `A`, from its variance (corrected by default).
 
 """
-Statistics.std(A::UnivariateStatistic) = sqrt(var(A))
+Statistics.std(A::UnivariateStatistic; corrected = true) = sqrt(var(A; corrected = corrected))
+
 
 """
     skewness(A::UnivariateStatistic)
