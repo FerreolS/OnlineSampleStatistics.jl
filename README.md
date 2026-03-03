@@ -118,7 +118,7 @@ UnivariateStatistic{Float64, 4, Int64} with 4 moments
 
 ### Independent Statistics
 
-`IndependentStatistic{T,K,N}` tracks `K` statistical moments of an independent multivariate data stream. It is a subtype of `AbstractArray{UnivariateStatistic{T,K},N}` that uses a `ZippedArrays` to ensure the efficiency of the updates.
+`IndependentStatistic{T,N,K}` tracks `K` statistical moments of an independent multivariate data stream. It is a subtype of `AbstractArray{UnivariateStatistic{T,K},N}` that uses a `ZippedArrays` to ensure the efficiency of the updates.
 
 ```julia-repl
 julia> using OnlineSampleStatistics
