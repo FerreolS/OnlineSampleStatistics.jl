@@ -627,6 +627,5 @@ end
 end
 
 # declarations for AstroFITS input/output extension
-const STAT_HDU_KWD = "STAT-HDU"
 function find_stat_groupd_ids end # defined in the extension
 

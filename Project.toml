@@ -12,10 +12,9 @@ ZippedArrays = "8051824b-fc5e-4603-89c4-0e6ea551cb88"
 
 [weakdeps]
 AstroFITS = "34e54ef0-c5bf-48ab-9e5d-cca51f35ed77"
-FITSHeaders = "8163a04c-c153-4fb1-a498-3402381ec208"
 
 [extensions]
-OnlineSampleStatisticsAstroFITSExt = ["AstroFITS", "FITSHeaders"]
+OnlineSampleStatisticsAstroFITSExt = ["AstroFITS"]
 
 [compat]
 AstroFITS = "1.1.0"
@@ -30,11 +29,10 @@ julia = "1.9"
 
 [extras]
 AstroFITS = "34e54ef0-c5bf-48ab-9e5d-cca51f35ed77"
-FITSHeaders = "8163a04c-c153-4fb1-a498-3402381ec208"
 StructuredArrays = "2e8cd123-6858-488d-b42d-068777248635"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 Transducers = "28d57a85-8fef-5791-bfe6-a80928e7c999"
 ZippedArrays = "8051824b-fc5e-4603-89c4-0e6ea551cb88"
 
 [targets]
-test = ["Test", "ZippedArrays", "StructuredArrays", "Transducers", "AstroFITS", "FITSHeaders"]
+test = ["Test", "ZippedArrays", "StructuredArrays", "Transducers", "AstroFITS"]

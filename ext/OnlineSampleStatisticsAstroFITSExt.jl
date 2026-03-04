@@ -1,19 +1,25 @@
 module OnlineSampleStatisticsAstroFITSExt
 
 if isdefined(Base, :get_extension)
-    using OnlineSampleStatistics, AstroFITS, FITSHeaders
-    import OnlineSampleStatistics: STAT_HDU_KWD, weights, find_stat_groupd_ids
+    using OnlineSampleStatistics, AstroFITS
+    import OnlineSampleStatistics: weights, find_stat_groupd_ids
     import Base: read, write
 else
-    using ..OnlineSampleStatistics, ..AstroFITS, ..FITSHeaders
-    import ..OnlineSampleStatistics: STAT_HDU_KWD, weights, find_stat_groupd_ids
+    using ..OnlineSampleStatistics, ..AstroFITS
+    import ..OnlineSampleStatistics: weights, find_stat_groupd_ids
     import ..Base: read, write
 end
+
+const STAT_HDU_KWD = "STAT-HDU"
+const STAT_GROUP_ID_KWD = "STAT-GROUP-ID"
+const STAT_MOMENT_INDEX_KWD = "STAT-MOMENT-INDEX"
+const STAT_NB_MOMENTS_KWD = "STAT-NB-MOMENTS"
+const STAT_WEIGHTS_KWD = "STAT-WEIGHTS"
 
 function isa_stat_hdu(hdu)
     (hdu isa AstroFITS.FitsImageHDU
      && haskey(hdu, STAT_HDU_KWD)
-     && hdu[STAT_HDU_KWD].type == FITSHeaders.FITS_LOGICAL
+     && hdu[STAT_HDU_KWD].type == FITS_LOGICAL
      && hdu[STAT_HDU_KWD].logical)
 end
 
@@ -27,11 +33,6 @@ function declare_HDUs(
     weights_hdu = FitsImageHDU{W,N}(file, dims)
     (moments_hdus, weights_hdu)
 end
-
-const STAT_GROUP_ID_KWD = "STAT-GROUP-ID"
-const STAT_MOMENT_INDEX_KWD = "STAT-MOMENT-INDEX"
-const STAT_NB_MOMENTS_KWD = "STAT-NB-MOMENTS"
-const STAT_WEIGHTS_KWD = "STAT-WEIGHTS"
 
 function OnlineSampleStatistics.find_stat_groupd_ids(fitsfile::FitsFile)
     group_ids = Set{String}()
@@ -77,6 +78,8 @@ function Base.write(
             STAT_GROUP_ID_KWD     => (stat_group_id, "stat ID to group moments HDUs together"),
             STAT_NB_MOMENTS_KWD   => (K,             "number of IndependentStatistic moments"),
             STAT_MOMENT_INDEX_KWD => (k,             "th IndependentStatistic moment"))
+        # adding EXTNAME unless the user already specified one
+        haskey(moments_hdus[k], "EXTNAME") || push!(moments_hdus[k], "EXTNAME" => "MOMENT-$k")
         write(moments_hdus[k], OnlineSampleStatistics.get_rawmoments(stat, k))
     end
 
@@ -84,6 +87,8 @@ function Base.write(
         STAT_HDU_KWD      => (true,          "OnlineSampleStatistics.jl data"),
         STAT_GROUP_ID_KWD => (stat_group_id, "stat ID to group moments HDUs together"),
         STAT_WEIGHTS_KWD  => (true,          "IndependentStatistic weights"))
+    # adding EXTNAME unless the user already specified one
+    haskey(weights_hdu, "EXTNAME") || push!(weights_hdu, "EXTNAME" => "WEIGHTS")
     write(weights_hdu, weights(stat))
 
     return (moments_hdus, weights_hdu)

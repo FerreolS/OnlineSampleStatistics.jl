@@ -264,3 +264,55 @@ julia> A = UnivariateStatistic(5); # accumulating moments up to 5th
 julia> @btime fit!(A,x)
   3.898 s (0 allocations: 0 bytes)
 ```
+
+### Input Output with FITS files
+
+Need to load package [AstroFITS](https://github.com/emmt/AstroFITS.jl) so the extension is loaded too:
+```
+using AstroFITS
+```
+
+Write an `IndependentStatistic` to a FITS file:
+```
+stat = IndependentStatistic(2, (3, 3))
+fit!(stat, rand(3, 3))
+
+fitsfile = openfits("myfile.fits", "w!")
+write(fitsfile, FitsHeader(), stat)
+close(fitsfile)
+```
+
+Read an `IndependantStatistic` from a FITS file:
+```
+fitsfile = openfits("myfile.fits")
+stat = read(IndependentStatistic, fitsfile)
+close(fitsfile)
+```
+
+Each (raw) moment is written in its own HDU. the weights (the `nobs`) are written in their own HDU too.
+
+If you store multiple statistics inside the same FITS file, "group IDs" are used to identify which HDU belongs to which stat:
+
+```
+group_id1 = "ABC"
+stat1 = IndependentStatistic(2, (3, 3))
+fit!(stat1, rand(3, 3))
+
+group_id2 = "DEF"
+stat2 = IndependentStatistic(2, (3, 3))
+fit!(stat2, rand(3, 3))
+
+fitsfile = openfits("myfile.fits", "w!")
+write(fitsfile, FitsHeader(), stat1, group_id1)
+write(fitsfile, FitsHeader(), stat2, group_id2)
+close(fitsfile)
+```
+
+```
+fitsfile = openfits("myfile.fits")
+stat1 = read(IndependentStatistic, fitsfile, "ABC")
+stat2 = read(IndependentStatistic, fitsfile, "DEF")
+close(fitsfile)
+```
+
+
