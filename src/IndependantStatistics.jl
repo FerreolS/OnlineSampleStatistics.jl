@@ -625,3 +625,9 @@ end
 
     return code
 end
+
+# declarations for AstroFITS input/output extension
+const STAT_HDU_KWD = "STAT-HDU"
+function isa_stat_hdu end # defined in the extension
+function declare_HDUs end # defined in the extension
+
