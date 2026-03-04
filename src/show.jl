@@ -17,7 +17,7 @@ function Base.show(io::IO, ::MIME"text/plain", A::UnivariateStatistic{T, K, I}) 
     if I <: Integer
         print(io, "  nobs: $n")
     else
-        print(io, "  weight: $(round.(n; sigdigits = sig_digits))")
+        print(io, "  weight: $(round(n; sigdigits = sig_digits))")
     end
 
     if n == 0
