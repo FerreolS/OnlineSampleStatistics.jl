@@ -12,8 +12,7 @@ export UnivariateStatistic,
     get_moments,
     fit!,
     merge!
-    
-    
+
 import OnlineStatsBase
 import Statistics
 import StatsBase
