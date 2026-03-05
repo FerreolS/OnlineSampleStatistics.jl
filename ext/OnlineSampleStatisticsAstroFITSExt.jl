@@ -2,11 +2,11 @@ module OnlineSampleStatisticsAstroFITSExt
 
 if isdefined(Base, :get_extension)
     using OnlineSampleStatistics, AstroFITS
-    import OnlineSampleStatistics: weights, find_stat_groupd_ids
+    import OnlineSampleStatistics: find_stat_groupd_ids
     import Base: read, write
 else
     using ..OnlineSampleStatistics, ..AstroFITS
-    import ..OnlineSampleStatistics: weights, find_stat_groupd_ids
+    import ..OnlineSampleStatistics: find_stat_groupd_ids
     import ..Base: read, write
 end
 
@@ -23,126 +23,98 @@ function isa_stat_hdu(hdu)
      && hdu[STAT_HDU_KWD].logical)
 end
 
-function declare_HDUs(
-    file::FitsFile, stat::IndependentStatistic{T,N,K,W}) where {T,N,K,W}
-    moments_hdus = Vector{FitsImageHDU{T,N}}(undef, K)
-    dims = size(weights(stat))
-    for k in 1:order(stat)
-        moments_hdus[k] = FitsImageHDU{T,N}(file, dims)
-    end
-    weights_hdu = FitsImageHDU{W,N}(file, dims)
-    (moments_hdus, weights_hdu)
-end
-
 function OnlineSampleStatistics.find_stat_groupd_ids(fitsfile::FitsFile)
-    group_ids = Set{String}()
+    group_ids = Vector{String}()
     for hdu in fitsfile
         isa_stat_hdu(hdu) && push!(group_ids, hdu[STAT_GROUP_ID_KWD].string)
     end
-    group_ids
+    unique!(group_ids)
 end
 
 function Base.write(
     file::FitsFile,
     hdr::AstroFITS.OptionalHeader,
-    stat::IndependentStatistic,
+    stat::IndependentStatistic{T,N,K,W},
     stat_group_id ::String = string(rand('A':'Z', 16)...)
-)
-    (moments_hdus, weights_hdu) = declare_HDUs(file, stat)
-    merge!(moments_hdus[1], filter(!is_structural, hdr))
-    write(moments_hdus, weights_hdu, stat, stat_group_id)
-    return file # returns the file not the HDU
-end
+) where {T,N,K,W}
+    dims = size(nobs(stat))
 
-"""
-    write(moments_hdus::Vector{FitsImageHDU{T,N}}, weights_hdu::FitsImageHDU{W,N}, stat::IndependentStatistic; stat_group_id::Int=rand()) -> (moments_hdus, weights_hdu)
-
-write IndependentStatistic' raw moments and weights to images HDUs
-
-`stat_group_id`: ID to be able to retrieve the different HDUs inside the FITS file, even if they get reordered
-"""
-function Base.write(
-    moments_hdus::Vector{FitsImageHDU{T,N}},
-    weights_hdu::FitsImageHDU{W,N},
-    stat::IndependentStatistic,
-    stat_group_id::String,
-) where {T,N,W}
-
-    K = order(stat)
-    length(moments_hdus) == K || throw(DimensionMismatch(
-        "Number of moments HDUs is $(length(moments_hdus)) instead of $K"))
-
-    for k in 1:K
+    moments_hdus = Vector{FitsImageHDU{T,N}}(undef, K)
+    for k in 1:order(stat)
+        moments_hdus[k] = FitsImageHDU{T,N}(file, dims)
+        (k == 1) && merge!(moments_hdus[k], filter(!is_structural, hdr))
         push!(moments_hdus[k],
             STAT_HDU_KWD          => (true,          "is a OnlineSampleStatistics.jl data"),
-            STAT_GROUP_ID_KWD     => (stat_group_id, "stat ID to group moments HDUs together"),
-            STAT_NB_MOMENTS_KWD   => (K,             "number of IndependentStatistic moments"),
-            STAT_MOMENT_INDEX_KWD => (k,             "th IndependentStatistic moment"))
+            STAT_GROUP_ID_KWD     => (stat_group_id, "ID to group statistical moments HDUs"),
+            STAT_NB_MOMENTS_KWD   => (K,             "number of statistical moments"),
+            STAT_MOMENT_INDEX_KWD => (k,             "th statistical moment"))
         # adding EXTNAME unless the user already specified one
         haskey(moments_hdus[k], "EXTNAME") || push!(moments_hdus[k], "EXTNAME" => "MOMENT-$k")
         write(moments_hdus[k], OnlineSampleStatistics.get_rawmoments(stat, k))
     end
-
+    
+    weights_hdu = FitsImageHDU{W,N}(file, dims)
     push!(weights_hdu,
-        STAT_HDU_KWD      => (true,          "OnlineSampleStatistics.jl data"),
-        STAT_GROUP_ID_KWD => (stat_group_id, "stat ID to group moments HDUs together"),
-        STAT_WEIGHTS_KWD  => (true,          "IndependentStatistic weights"))
+        STAT_HDU_KWD      => (true,          "is a OnlineSampleStatistics.jl data"),
+        STAT_GROUP_ID_KWD => (stat_group_id, "ID to group statistical moments HDUs"),
+        STAT_WEIGHTS_KWD  => (true,          "is statistical weights"))
     # adding EXTNAME unless the user already specified one
     haskey(weights_hdu, "EXTNAME") || push!(weights_hdu, "EXTNAME" => "WEIGHTS")
-    write(weights_hdu, weights(stat))
-
-    return (moments_hdus, weights_hdu)
+    write(weights_hdu, nobs(stat))
+    
+    return file
 end
 
-function Base.read(
-    ::Type{IndependentStatistic}, fitsfile::FitsFile, stat_group_id::String
-    ; readkwds...)
-
-    local T, N, K, moments, weights # will be filled when reading HDUs
-
+function find_stat_hdus(fitsfile::FitsFile, stat_group_id::String)
+    local moments_hdus, weights_hdu, T, N, K, W
     for hdu in fitsfile
-        # read only stats HDUs with the given group id
         isa_stat_hdu(hdu) || continue
         hdu[STAT_GROUP_ID_KWD].string == stat_group_id || continue
 
         if haskey(hdu, STAT_WEIGHTS_KWD) && hdu[STAT_WEIGHTS_KWD].logical
-            weights = read(hdu; readkwds...)
+            weights_hdu = hdu
+            W = weights_hdu.data_eltype
         else
-            if !(@isdefined moments)
+             if !(@isdefined moments_hdus)
                 T = hdu.data_eltype
                 N = hdu.data_ndims
                 K = hdu[STAT_NB_MOMENTS_KWD].integer
-                moments = Vector{Array{T,N}}(undef, K)
+                moments_hdus = Vector{FitsImageHDU}(undef, K)
             end
+            T = promote_type(T, hdu.data_eltype)
             k = hdu[STAT_MOMENT_INDEX_KWD].integer
-            moments[k] = read(Array{T,N}, hdu; readkwds...)
-        end
-
-        # stop reading HDUs if work is done
-        if (@isdefined weights) && (@isdefined moments) && all(i -> isassigned(moments, i), 1:K)
-            break
+            moments_hdus[k] = hdu
         end
     end
-
-    if !(@isdefined weights)
-        error("could not find weights HDU")
-    end
+    (@isdefined weights_hdu)  || ArgumentError("could not find weights HDU")
+    (@isdefined moments_hdus) || ArgumentError("could not find any moment HDU")
     for k in 1:K
-        if !(@isdefined moments) || !isassigned(moments, k)
-            error("could not find moment number $k HDU")
-        end
+        isassigned(moments_hdus, k) || ArgumentError("could not find moment number $k HDU")
     end
+    (moments_hdus, weights_hdu, T, N, K, W)
+end
 
-    moments = tuple(moments...) # MANDATORY
+function Base.read(
+    ::Type{IndependentStatistic},
+    fitsfile::FitsFile,
+    stat_group_id::String
+    ; readkwds...
+)
+    (moments_hdus, weights_hdu, T, N, K, W) = find_stat_hdus(fitsfile, stat_group_id)
 
-    # create an IndependentStatistic from raw moments
+    moments = NTuple{K,Array{T,N}}( read(Array{T,N}, moments_hdus[k]) for k in 1:K )
+    weights = read(Array{W,N}, weights_hdu; readkwds...)
+
     OnlineSampleStatistics.build_from_rawmoments(weights, moments)
 end
 
 function Base.read(
-    ::Type{IndependentStatistic}, fitsfile::FitsFile; ext::Union{Int,String}=1, readkwds...)
+    ::Type{IndependentStatistic},
+    fitsfile::FitsFile
+    ; ext::Union{Int,String}=1,
+      readkwds...)
     stat_group_id = fitsfile[ext][STAT_GROUP_ID_KWD].string
-    Base.read(IndependentStatistic, fitsfile, stat_group_id; readkwds...)
+    read(IndependentStatistic, fitsfile, stat_group_id; readkwds...)
 end
 
 end

@@ -294,17 +294,17 @@ Each (raw) moment is written in its own HDU. the weights (the `nobs`) are writte
 If you store multiple statistics inside the same FITS file, "group IDs" are used to identify which HDU belongs to which stat:
 
 ```
-group_id1 = "ABC"
+stat_group_id1 = "ABC"
 stat1 = IndependentStatistic(2, (3, 3))
 fit!(stat1, rand(3, 3))
 
-group_id2 = "DEF"
+stat_group_id2 = "DEF"
 stat2 = IndependentStatistic(2, (3, 3))
 fit!(stat2, rand(3, 3))
 
 fitsfile = openfits("myfile.fits", "w!")
-write(fitsfile, FitsHeader(), stat1, group_id1)
-write(fitsfile, FitsHeader(), stat2, group_id2)
+write(fitsfile, FitsHeader(), stat1, stat_group_id1)
+write(fitsfile, FitsHeader(), stat2, stat_group_id2)
 close(fitsfile)
 ```
 
@@ -315,4 +315,10 @@ stat2 = read(IndependentStatistic, fitsfile, "DEF")
 close(fitsfile)
 ```
 
+If you don't know the group ids in a file, you can retrieve them:
+```julia
+fitsfile = openfits("myfile.fits")
+OnlineSampleStatistics.find_stat_groupd_ids(fitsfile)
+close(fitsfile)
+```
 
