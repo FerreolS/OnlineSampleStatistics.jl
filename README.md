@@ -268,12 +268,12 @@ julia> @btime fit!(A,x)
 ### Input Output with FITS files
 
 Need to load package [AstroFITS](https://github.com/emmt/AstroFITS.jl) so the extension is loaded too:
-```
+```julia
 using AstroFITS
 ```
 
 Write an `IndependentStatistic` to a FITS file:
-```
+```julia
 stat = IndependentStatistic(2, (3, 3))
 fit!(stat, rand(3, 3))
 
@@ -283,7 +283,7 @@ close(fitsfile)
 ```
 
 Read an `IndependantStatistic` from a FITS file:
-```
+```julia
 fitsfile = openfits("myfile.fits")
 stat = read(IndependentStatistic, fitsfile)
 close(fitsfile)
@@ -293,7 +293,7 @@ Each (raw) moment is written in its own HDU. the weights (the `nobs`) are writte
 
 If you store multiple statistics inside the same FITS file, "group IDs" are used to identify which HDU belongs to which stat:
 
-```
+```julia
 stat_group_id1 = "ABC"
 stat1 = IndependentStatistic(2, (3, 3))
 fit!(stat1, rand(3, 3))
@@ -308,17 +308,17 @@ write(fitsfile, FitsHeader(), stat2, stat_group_id2)
 close(fitsfile)
 ```
 
-```
+```julia
 fitsfile = openfits("myfile.fits")
 stat1 = read(IndependentStatistic, fitsfile, "ABC")
 stat2 = read(IndependentStatistic, fitsfile, "DEF")
 close(fitsfile)
 ```
 
-If you don't know the group ids in a file, you can retrieve them:
+If you don't know which group IDs are present in a file, you can retrieve them:
 ```julia
 fitsfile = openfits("myfile.fits")
-OnlineSampleStatistics.find_stat_groupd_ids(fitsfile)
+ids = OnlineSampleStatistics.find_stat_group_ids(fitsfile)
 close(fitsfile)
 ```
 

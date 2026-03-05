@@ -1,4 +1,5 @@
 using Test, OnlineSampleStatistics, AstroFITS
+using OnlineSampleStatistics: isa_stat_hdu, find_stat_group_ids
 
 Ext = Base.get_extension(OnlineSampleStatistics, :OnlineSampleStatisticsAstroFITSExt)
 
@@ -39,21 +40,21 @@ hdr = FitsHeader("COUNT" => 42)
     @test fitsfile[K+2]["COUNT"].integer == 42
 end
 
-@testset "find_stat_groupd_ids" begin
-    @test_nowarn Ext.find_stat_groupd_ids(fitsfile)
-    @test Ext.find_stat_groupd_ids(fitsfile) == [stat_group_id1, stat_group_id2]
+@testset "find_stat_group_ids" begin
+    @test_nowarn find_stat_group_ids(fitsfile)
+    @test find_stat_group_ids(fitsfile) == [stat_group_id1, stat_group_id2]
 end
 
 @testset "isa_stat_hdu" begin
-    @test_nowarn Ext.isa_stat_hdu(fitsfile[1])
-    @test Ext.isa_stat_hdu(fitsfile[1])
+    @test_nowarn isa_stat_hdu(fitsfile[1])
+    @test isa_stat_hdu(fitsfile[1])
 end
 
 @testset "find_stat_hdus" begin
     @test_nowarn Ext.find_stat_hdus(fitsfile, stat_group_id1)
     @test length(Ext.find_stat_hdus(fitsfile, stat_group_id1)[1]) == K
-    @test all(Ext.isa_stat_hdu, Ext.find_stat_hdus(fitsfile, stat_group_id1)[1])
-    @test Ext.isa_stat_hdu(Ext.find_stat_hdus(fitsfile, stat_group_id1)[2])
+    @test all(isa_stat_hdu, Ext.find_stat_hdus(fitsfile, stat_group_id1)[1])
+    @test isa_stat_hdu(Ext.find_stat_hdus(fitsfile, stat_group_id1)[2])
     @test Ext.find_stat_hdus(fitsfile, stat_group_id1)[3] == T1
     @test Ext.find_stat_hdus(fitsfile, stat_group_id1)[4] == N
     @test Ext.find_stat_hdus(fitsfile, stat_group_id1)[5] == K

@@ -2,19 +2,17 @@ module OnlineSampleStatisticsAstroFITSExt
 
 if isdefined(Base, :get_extension)
     using OnlineSampleStatistics, AstroFITS
-    import OnlineSampleStatistics: find_stat_groupd_ids
+    import OnlineSampleStatistics: isa_stat_hdu, find_stat_group_ids,
+                                   STAT_HDU_KWD, STAT_GROUP_ID_KWD, STAT_MOMENT_INDEX_KWD,
+                                   STAT_NB_MOMENTS_KWD, STAT_WEIGHTS_KWD
     import Base: read, write
 else
     using ..OnlineSampleStatistics, ..AstroFITS
-    import ..OnlineSampleStatistics: find_stat_groupd_ids
+    import ..OnlineSampleStatistics: isa_stat_hdu, find_stat_group_ids,
+                                     STAT_HDU_KWD, STAT_GROUP_ID_KWD, STAT_MOMENT_INDEX_KWD,
+                                     STAT_NB_MOMENTS_KWD, STAT_WEIGHTS_KWD
     import ..Base: read, write
 end
-
-const STAT_HDU_KWD = "STAT-HDU"
-const STAT_GROUP_ID_KWD = "STAT-GROUP-ID"
-const STAT_MOMENT_INDEX_KWD = "STAT-MOMENT-INDEX"
-const STAT_NB_MOMENTS_KWD = "STAT-NB-MOMENTS"
-const STAT_WEIGHTS_KWD = "STAT-WEIGHTS"
 
 function isa_stat_hdu(hdu)
     (hdu isa AstroFITS.FitsImageHDU
@@ -23,7 +21,7 @@ function isa_stat_hdu(hdu)
      && hdu[STAT_HDU_KWD].logical)
 end
 
-function OnlineSampleStatistics.find_stat_groupd_ids(fitsfile::FitsFile)
+function OnlineSampleStatistics.find_stat_group_ids(fitsfile::FitsFile)
     group_ids = Vector{String}()
     for hdu in fitsfile
         isa_stat_hdu(hdu) && push!(group_ids, hdu[STAT_GROUP_ID_KWD].string)
