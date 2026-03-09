@@ -67,6 +67,7 @@ function find_stat_hdus(fitsfile::FitsFile, stat_group_id::String)
     local moments_hdus, weights_hdu, T, N, K, W
     for hdu in fitsfile
         isa_stat_hdu(hdu) || continue
+        haskey(hdu, STAT_GROUP_ID_KWD) || continue
         hdu[STAT_GROUP_ID_KWD].string == stat_group_id || continue
 
         if haskey(hdu, STAT_WEIGHTS_KWD) && hdu[STAT_WEIGHTS_KWD].logical
@@ -81,7 +82,13 @@ function find_stat_hdus(fitsfile::FitsFile, stat_group_id::String)
             end
             T = promote_type(T, hdu.data_eltype)
             k = hdu[STAT_MOMENT_INDEX_KWD].integer
-            moments_hdus[k] = hdu
+            (1 <= k <= K) || throw(ArgumentError(
+                "invalid moment index $k (expected in 1:$K) for group \"$stat_group_id\""
+            ))
+            isassigned(moments_hdus, k) && throw(ArgumentError(
+                "duplicate moment number $k HDU for group \"$stat_group_id\""
+            ))
+             moments_hdus[k] = hdu
         end
     end
     (@isdefined weights_hdu)  || throw(ArgumentError("could not find weights HDU"))
