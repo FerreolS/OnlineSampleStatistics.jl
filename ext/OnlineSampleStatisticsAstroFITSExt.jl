@@ -1,0 +1,225 @@
+module OnlineSampleStatisticsAstroFITSExt
+
+if isdefined(Base, :get_extension)
+    using OnlineSampleStatistics, AstroFITS
+    import OnlineSampleStatistics: isa_stat_hdu, find_stat_group_ids,
+        STAT_HDU_KWD, STAT_GROUP_ID_KWD, STAT_MOMENT_INDEX_KWD,
+        STAT_NB_MOMENTS_KWD, STAT_WEIGHTS_KWD
+    import Base: read, write
+else
+    using ..OnlineSampleStatistics, ..AstroFITS
+    import ..OnlineSampleStatistics: isa_stat_hdu, find_stat_group_ids,
+        STAT_HDU_KWD, STAT_GROUP_ID_KWD, STAT_MOMENT_INDEX_KWD,
+        STAT_NB_MOMENTS_KWD, STAT_WEIGHTS_KWD
+    import ..Base: read, write
+end
+
+"""
+    isa_stat_hdu(hdu)
+
+Return `true` if `hdu` is an image HDU tagged as an OnlineSampleStatistics HDU.
+"""
+function isa_stat_hdu(hdu)
+    return (
+        hdu isa AstroFITS.FitsImageHDU
+            && haskey(hdu, STAT_HDU_KWD)
+            && hdu[STAT_HDU_KWD].type == FITS_LOGICAL
+            && hdu[STAT_HDU_KWD].logical
+    )
+end
+
+"""
+    find_stat_group_ids(fitsfile::FitsFile)
+
+Return unique statistic group IDs found in `fitsfile`.
+Only HDUs recognized by [`isa_stat_hdu`](@ref) and carrying the
+`STAT-GROUP-ID` keyword are considered.
+"""
+function OnlineSampleStatistics.find_stat_group_ids(fitsfile::FitsFile)
+    group_ids = Vector{String}()
+    for hdu in fitsfile
+        isa_stat_hdu(hdu) || continue
+        haskey(hdu, STAT_GROUP_ID_KWD) || continue
+        push!(group_ids, hdu[STAT_GROUP_ID_KWD].string)
+    end
+    return unique!(group_ids)
+end
+
+"""
+    _generate_unique_stat_group_id(file::FitsFile)
+
+Generate a random group ID that is not already present in `file`.
+"""
+function _generate_unique_stat_group_id(file::FitsFile)
+    existing_ids = Set(find_stat_group_ids(file))
+    while true
+        stat_group_id = string(rand('A':'Z', 16)...)
+        stat_group_id in existing_ids || return stat_group_id
+    end
+    return
+end
+
+"""
+    write(file::FitsFile, hdr::AstroFITS.OptionalHeader, stat::IndependentStatistic)
+
+Write `stat` to `file` using a freshly generated unique group ID.
+"""
+function Base.write(
+        file::FitsFile,
+        hdr::AstroFITS.OptionalHeader,
+        stat::IndependentStatistic{T, N, K, W}
+    ) where {T, N, K, W}
+    stat_group_id = _generate_unique_stat_group_id(file)
+    return write(file, hdr, stat, stat_group_id)
+end
+
+"""
+    write(file::FitsFile, hdr::AstroFITS.OptionalHeader,
+          stat::IndependentStatistic, stat_group_id::String)
+
+Write `stat` to `file` using `stat_group_id`.
+Throws `ArgumentError` if `stat_group_id` is already used by another statistic
+in the same FITS file.
+"""
+function Base.write(
+        file::FitsFile,
+        hdr::AstroFITS.OptionalHeader,
+        stat::IndependentStatistic{T, N, K, W},
+        stat_group_id::String
+    ) where {T, N, K, W}
+    stat_group_id in find_stat_group_ids(file) && throw(
+        ArgumentError("stat group ID \"$stat_group_id\" already exists in FITS file")
+    )
+
+    dims = size(nobs(stat))
+
+    moments_hdus = Vector{FitsImageHDU{T, N}}(undef, K)
+    for k in 1:order(stat)
+        moments_hdus[k] = FitsImageHDU{T, N}(file, dims)
+        (k == 1) && merge!(moments_hdus[k], filter(!is_structural, hdr))
+        merge!(
+            moments_hdus[k], FitsHeader(
+                STAT_HDU_KWD => (true, "is a OnlineSampleStatistics.jl data"),
+                STAT_GROUP_ID_KWD => (stat_group_id, "ID to group statistical moments HDUs"),
+                STAT_NB_MOMENTS_KWD => (K, "number of statistical moments"),
+                STAT_MOMENT_INDEX_KWD => (k, "th statistical moment")
+            )
+        )
+        # adding EXTNAME unless the user already specified one
+        haskey(moments_hdus[k], "EXTNAME") || push!(moments_hdus[k], "EXTNAME" => "MOMENT-$k")
+        write(moments_hdus[k], OnlineSampleStatistics.get_rawmoments(stat, k))
+    end
+
+    weights_hdu = FitsImageHDU{W, N}(file, dims)
+    merge!(
+        weights_hdu, FitsHeader(
+            STAT_HDU_KWD => (true, "is a OnlineSampleStatistics.jl data"),
+            STAT_GROUP_ID_KWD => (stat_group_id, "ID to group statistical moments HDUs"),
+            STAT_WEIGHTS_KWD => (true, "is statistical weights")
+        )
+    )
+    # adding EXTNAME unless the user already specified one
+    haskey(weights_hdu, "EXTNAME") || push!(weights_hdu, "EXTNAME" => "WEIGHTS")
+    write(weights_hdu, nobs(stat))
+
+    return file
+end
+
+"""
+    find_stat_hdus(fitsfile::FitsFile, stat_group_id::String)
+
+Find all HDUs belonging to `stat_group_id` and return
+`(moments_hdus, weights_hdu, T, N, K, W)`.
+Throws `ArgumentError` if required HDUs or metadata are missing/inconsistent.
+"""
+function find_stat_hdus(fitsfile::FitsFile, stat_group_id::String)
+    local moments_hdus, weights_hdu, T, N, K, W
+    for hdu in fitsfile
+        isa_stat_hdu(hdu) || continue
+        haskey(hdu, STAT_GROUP_ID_KWD) || continue
+        hdu[STAT_GROUP_ID_KWD].string == stat_group_id || continue
+
+        if haskey(hdu, STAT_WEIGHTS_KWD) && hdu[STAT_WEIGHTS_KWD].logical
+            weights_hdu = hdu
+            W = weights_hdu.data_eltype
+        else
+            if !(@isdefined moments_hdus)
+                haskey(hdu, STAT_NB_MOMENTS_KWD) || throw(
+                    ArgumentError(
+                        "missing $STAT_NB_MOMENTS_KWD in stat HDU for group \"$stat_group_id\""
+                    )
+                )
+                T = hdu.data_eltype
+                N = hdu.data_ndims
+                K = hdu[STAT_NB_MOMENTS_KWD].integer
+                moments_hdus = Vector{FitsImageHDU}(undef, K)
+            end
+            T = promote_type(T, hdu.data_eltype)
+            haskey(hdu, STAT_MOMENT_INDEX_KWD) || throw(
+                ArgumentError(
+                    "missing $STAT_MOMENT_INDEX_KWD in stat HDU for group \"$stat_group_id\""
+                )
+            )
+            k = hdu[STAT_MOMENT_INDEX_KWD].integer
+            (1 <= k <= K) || throw(
+                ArgumentError(
+                    "invalid moment index $k (expected in 1:$K) for group \"$stat_group_id\""
+                )
+            )
+            isassigned(moments_hdus, k) && throw(
+                ArgumentError(
+                    "duplicate moment number $k HDU for group \"$stat_group_id\""
+                )
+            )
+            moments_hdus[k] = hdu
+        end
+    end
+    (@isdefined weights_hdu)  || throw(ArgumentError("could not find weights HDU"))
+    (@isdefined moments_hdus) || throw(ArgumentError("could not find any moment HDU"))
+    for k in 1:K
+        isassigned(moments_hdus, k) || throw(ArgumentError("could not find moment number $k HDU"))
+    end
+    return (moments_hdus, weights_hdu, T, N, K, W)
+end
+
+"""
+    read(IndependentStatistic, fitsfile::FitsFile, stat_group_id::String; readkwds...)
+
+Read an `IndependentStatistic` identified by `stat_group_id` from `fitsfile`.
+Extra keyword arguments are forwarded to AstroFITS when reading the weights HDU.
+"""
+function Base.read(
+        ::Type{IndependentStatistic},
+        fitsfile::FitsFile,
+        stat_group_id::String
+        ; readkwds...
+    )
+    (moments_hdus, weights_hdu, T, N, K, W) = find_stat_hdus(fitsfile, stat_group_id)
+
+    moments = NTuple{K, Array{T, N}}(read(Array{T, N}, moments_hdus[k]) for k in 1:K)
+    weights = read(Array{W, N}, weights_hdu; readkwds...)
+
+    return OnlineSampleStatistics.build_from_rawmoments(weights, moments)
+end
+
+"""
+    read(IndependentStatistic, fitsfile::FitsFile; ext=1, readkwds...)
+
+Read an `IndependentStatistic` from `fitsfile` by taking the group ID from HDU `ext`.
+Throws `ArgumentError` if `ext` is not a stat HDU or misses `STAT-GROUP-ID`.
+"""
+function Base.read(
+        ::Type{IndependentStatistic},
+        fitsfile::FitsFile
+        ; ext::Union{Int, String} = 1,
+        readkwds...
+    )
+    isa_stat_hdu(fitsfile[ext]) || throw(ArgumentError("HDU \"$ext\" is not a stat HDU"))
+    haskey(fitsfile[ext], STAT_GROUP_ID_KWD) || throw(
+        ArgumentError("HDU \"$ext\" is missing $STAT_GROUP_ID_KWD keyword")
+    )
+    stat_group_id = fitsfile[ext][STAT_GROUP_ID_KWD].string
+    return read(IndependentStatistic, fitsfile, stat_group_id; readkwds...)
+end
+
+end

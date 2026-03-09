@@ -1,7 +1,7 @@
 name = "OnlineSampleStatistics"
 uuid = "455218f6-ed6f-43e9-ad07-c481a1567983"
-version = "0.3.0"
 authors = ["ferreol.soulez@univ-lyon1.fr"]
+version = "0.3.0"
 
 [deps]
 OnlineStatsBase = "925886fa-5bf2-5e8e-b522-a9147a512338"
@@ -10,8 +10,16 @@ StatsBase = "2913bbd2-ae8a-5f71-8c99-4fb6c76f3a91"
 StructuredArrays = "2e8cd123-6858-488d-b42d-068777248635"
 ZippedArrays = "8051824b-fc5e-4603-89c4-0e6ea551cb88"
 
+[weakdeps]
+AstroFITS = "34e54ef0-c5bf-48ab-9e5d-cca51f35ed77"
+
+[extensions]
+OnlineSampleStatisticsAstroFITSExt = ["AstroFITS"]
+
 [compat]
+AstroFITS = "1.1.0"
 OnlineStatsBase = "1"
+Random = "1"
 Statistics = "1"
 StatsBase = "0.34"
 StructuredArrays = "0.2"
@@ -21,10 +29,12 @@ ZippedArrays = "0.2"
 julia = "1.9"
 
 [extras]
+AstroFITS = "34e54ef0-c5bf-48ab-9e5d-cca51f35ed77"
+Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
 StructuredArrays = "2e8cd123-6858-488d-b42d-068777248635"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 Transducers = "28d57a85-8fef-5791-bfe6-a80928e7c999"
 ZippedArrays = "8051824b-fc5e-4603-89c4-0e6ea551cb88"
 
 [targets]
-test = ["Test", "ZippedArrays", "StructuredArrays", "Transducers"]
+test = ["Test", "ZippedArrays", "StructuredArrays", "Transducers", "AstroFITS", "Random"]

@@ -625,3 +625,13 @@ end
 
     return code
 end
+
+# declarations for AstroFITS input/output extension
+const STAT_HDU_KWD = "STAT-HDU"
+const STAT_GROUP_ID_KWD = "STAT-GROUP-ID"
+const STAT_MOMENT_INDEX_KWD = "STAT-MOMENT-INDEX"
+const STAT_NB_MOMENTS_KWD = "STAT-NB-MOMENTS"
+const STAT_WEIGHTS_KWD = "STAT-WEIGHTS"
+function isa_stat_hdu        end # defined in the extension
+function find_stat_group_ids end # defined in the extension
+
