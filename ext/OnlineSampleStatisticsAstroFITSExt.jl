@@ -41,21 +41,21 @@ function Base.write(
     for k in 1:order(stat)
         moments_hdus[k] = FitsImageHDU{T,N}(file, dims)
         (k == 1) && merge!(moments_hdus[k], filter(!is_structural, hdr))
-        push!(moments_hdus[k],
+        merge!(moments_hdus[k], FitsHeader(
             STAT_HDU_KWD          => (true,          "is a OnlineSampleStatistics.jl data"),
             STAT_GROUP_ID_KWD     => (stat_group_id, "ID to group statistical moments HDUs"),
             STAT_NB_MOMENTS_KWD   => (K,             "number of statistical moments"),
-            STAT_MOMENT_INDEX_KWD => (k,             "th statistical moment"))
+            STAT_MOMENT_INDEX_KWD => (k,             "th statistical moment")))
         # adding EXTNAME unless the user already specified one
         haskey(moments_hdus[k], "EXTNAME") || push!(moments_hdus[k], "EXTNAME" => "MOMENT-$k")
         write(moments_hdus[k], OnlineSampleStatistics.get_rawmoments(stat, k))
     end
     
     weights_hdu = FitsImageHDU{W,N}(file, dims)
-    push!(weights_hdu,
+    merge!(weights_hdu, FitsHeader(
         STAT_HDU_KWD      => (true,          "is a OnlineSampleStatistics.jl data"),
         STAT_GROUP_ID_KWD => (stat_group_id, "ID to group statistical moments HDUs"),
-        STAT_WEIGHTS_KWD  => (true,          "is statistical weights"))
+        STAT_WEIGHTS_KWD  => (true,          "is statistical weights")))
     # adding EXTNAME unless the user already specified one
     haskey(weights_hdu, "EXTNAME") || push!(weights_hdu, "EXTNAME" => "WEIGHTS")
     write(weights_hdu, nobs(stat))
