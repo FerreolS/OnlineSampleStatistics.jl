@@ -33,12 +33,34 @@ function OnlineSampleStatistics.find_stat_group_ids(fitsfile::FitsFile)
     return unique!(group_ids)
 end
 
+function _generate_unique_stat_group_id(file::FitsFile)
+    existing_ids = Set(find_stat_group_ids(file))
+    while true
+        stat_group_id = string(rand('A':'Z', 16)...)
+        stat_group_id in existing_ids || return stat_group_id
+    end
+    return
+end
+
+function Base.write(
+        file::FitsFile,
+        hdr::AstroFITS.OptionalHeader,
+        stat::IndependentStatistic{T, N, K, W}
+    ) where {T, N, K, W}
+    stat_group_id = _generate_unique_stat_group_id(file)
+    return write(file, hdr, stat, stat_group_id)
+end
+
 function Base.write(
         file::FitsFile,
         hdr::AstroFITS.OptionalHeader,
         stat::IndependentStatistic{T, N, K, W},
-        stat_group_id::String = string(rand('A':'Z', 16)...)
+        stat_group_id::String
     ) where {T, N, K, W}
+    stat_group_id in find_stat_group_ids(file) && throw(
+        ArgumentError("stat group ID \"$stat_group_id\" already exists in FITS file")
+    )
+
     dims = size(nobs(stat))
 
     moments_hdus = Vector{FitsImageHDU{T, N}}(undef, K)
