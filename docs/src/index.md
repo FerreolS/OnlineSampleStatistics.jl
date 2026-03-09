@@ -10,7 +10,7 @@ Documentation for [OnlineSampleStatistics](https://github.com/FerreolS/OnlineSam
 ```
 
 ```@autodocs
-Modules = [OnlineSampleStatistics,Main.DOC_EXT_ASTROFITS]
+Modules = [OnlineSampleStatistics, OnlineSampleStatisticsAstroFITSExt]
 ```
 
 ## I/O with AstroFITS

@@ -1,3 +1,4 @@
 [deps]
+AstroFITS = "34e54ef0-c5bf-48ab-9e5d-cca51f35ed77"
 Documenter = "e30172f5-a6a5-5a46-863b-614d45cd2de4"
 OnlineSampleStatistics = "455218f6-ed6f-43e9-ad07-c481a1567983"
