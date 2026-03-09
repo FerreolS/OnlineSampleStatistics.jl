@@ -14,6 +14,11 @@ else
     import ..Base: read, write
 end
 
+"""
+    isa_stat_hdu(hdu)
+
+Return `true` if `hdu` is an image HDU tagged as an OnlineSampleStatistics HDU.
+"""
 function isa_stat_hdu(hdu)
     return (
         hdu isa AstroFITS.FitsImageHDU
@@ -23,6 +28,13 @@ function isa_stat_hdu(hdu)
     )
 end
 
+"""
+    find_stat_group_ids(fitsfile::FitsFile)
+
+Return unique statistic group IDs found in `fitsfile`.
+Only HDUs recognized by [`isa_stat_hdu`](@ref) and carrying the
+`STAT-GROUP-ID` keyword are considered.
+"""
 function OnlineSampleStatistics.find_stat_group_ids(fitsfile::FitsFile)
     group_ids = Vector{String}()
     for hdu in fitsfile
@@ -33,6 +45,11 @@ function OnlineSampleStatistics.find_stat_group_ids(fitsfile::FitsFile)
     return unique!(group_ids)
 end
 
+"""
+    _generate_unique_stat_group_id(file::FitsFile)
+
+Generate a random group ID that is not already present in `file`.
+"""
 function _generate_unique_stat_group_id(file::FitsFile)
     existing_ids = Set(find_stat_group_ids(file))
     while true
@@ -42,6 +59,11 @@ function _generate_unique_stat_group_id(file::FitsFile)
     return
 end
 
+"""
+    write(file::FitsFile, hdr::AstroFITS.OptionalHeader, stat::IndependentStatistic)
+
+Write `stat` to `file` using a freshly generated unique group ID.
+"""
 function Base.write(
         file::FitsFile,
         hdr::AstroFITS.OptionalHeader,
@@ -51,6 +73,14 @@ function Base.write(
     return write(file, hdr, stat, stat_group_id)
 end
 
+"""
+    write(file::FitsFile, hdr::AstroFITS.OptionalHeader,
+          stat::IndependentStatistic, stat_group_id::String)
+
+Write `stat` to `file` using `stat_group_id`.
+Throws `ArgumentError` if `stat_group_id` is already used by another statistic
+in the same FITS file.
+"""
 function Base.write(
         file::FitsFile,
         hdr::AstroFITS.OptionalHeader,
@@ -95,6 +125,13 @@ function Base.write(
     return file
 end
 
+"""
+    find_stat_hdus(fitsfile::FitsFile, stat_group_id::String)
+
+Find all HDUs belonging to `stat_group_id` and return
+`(moments_hdus, weights_hdu, T, N, K, W)`.
+Throws `ArgumentError` if required HDUs or metadata are missing/inconsistent.
+"""
 function find_stat_hdus(fitsfile::FitsFile, stat_group_id::String)
     local moments_hdus, weights_hdu, T, N, K, W
     for hdu in fitsfile
@@ -145,6 +182,12 @@ function find_stat_hdus(fitsfile::FitsFile, stat_group_id::String)
     return (moments_hdus, weights_hdu, T, N, K, W)
 end
 
+"""
+    read(IndependentStatistic, fitsfile::FitsFile, stat_group_id::String; readkwds...)
+
+Read an `IndependentStatistic` identified by `stat_group_id` from `fitsfile`.
+Extra keyword arguments are forwarded to AstroFITS when reading the weights HDU.
+"""
 function Base.read(
         ::Type{IndependentStatistic},
         fitsfile::FitsFile,
@@ -159,6 +202,12 @@ function Base.read(
     return OnlineSampleStatistics.build_from_rawmoments(weights, moments)
 end
 
+"""
+    read(IndependentStatistic, fitsfile::FitsFile; ext=1, readkwds...)
+
+Read an `IndependentStatistic` from `fitsfile` by taking the group ID from HDU `ext`.
+Throws `ArgumentError` if `ext` is not a stat HDU or misses `STAT-GROUP-ID`.
+"""
 function Base.read(
         ::Type{IndependentStatistic},
         fitsfile::FitsFile
