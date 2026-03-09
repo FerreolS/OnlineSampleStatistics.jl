@@ -1,4 +1,4 @@
-using Test, OnlineSampleStatistics, AstroFITS
+using Test, OnlineSampleStatistics, AstroFITS, Random
 using OnlineSampleStatistics: isa_stat_hdu, find_stat_group_ids
 
 Ext = Base.get_extension(OnlineSampleStatistics, :OnlineSampleStatisticsAstroFITSExt)
@@ -41,6 +41,27 @@ Ext = Base.get_extension(OnlineSampleStatistics, :OnlineSampleStatisticsAstroFIT
 
             err = ArgumentError("stat group ID \"ABC\" already exists in FITS file")
             @test_throws err write(fitsfile, hdr, stat1, stat_group_id1)
+        end
+
+        @testset "write auto-generated group ID collision" begin
+            collision_file = openfits(joinpath(dir, "collision.fits"), "w!")
+            try
+                # Build a deterministic candidate ID, write it once explicitly, then
+                # reset RNG so the first auto-generated ID collides and must be retried.
+                Random.seed!(1234)
+                collision_id = string(rand('A':'Z', 16)...)
+
+                @test_nowarn write(collision_file, FitsHeader(), stat1, collision_id)
+
+                Random.seed!(1234)
+                @test_nowarn write(collision_file, FitsHeader(), stat2)
+
+                ids = find_stat_group_ids(collision_file)
+                @test length(ids) == 2
+                @test count(==(collision_id), ids) == 1
+            finally
+                close(collision_file)
+            end
         end
 
         @testset "find_stat_group_ids" begin
