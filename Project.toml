@@ -19,6 +19,7 @@ OnlineSampleStatisticsAstroFITSExt = ["AstroFITS"]
 [compat]
 AstroFITS = "1.1.0"
 OnlineStatsBase = "1"
+Random = "1"
 Statistics = "1"
 StatsBase = "0.34"
 StructuredArrays = "0.2"
