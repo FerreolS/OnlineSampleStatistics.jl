@@ -5,6 +5,7 @@ on:
       - master
     tags: ["*"]
   pull_request:
+    types: [opened, synchronize, reopened]
   workflow_dispatch:
 concurrency:
   # Skip intermediate builds: always.
@@ -23,8 +24,7 @@ jobs:
       fail-fast: false
       matrix:
         version:
-          - "1.11"
-          - "1.9"
+          - "1"
           - "lts"
           - "pre"
         os:
