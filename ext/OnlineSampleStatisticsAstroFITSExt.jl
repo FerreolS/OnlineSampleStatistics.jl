@@ -26,7 +26,9 @@ end
 function OnlineSampleStatistics.find_stat_group_ids(fitsfile::FitsFile)
     group_ids = Vector{String}()
     for hdu in fitsfile
-        isa_stat_hdu(hdu) && push!(group_ids, hdu[STAT_GROUP_ID_KWD].string)
+        isa_stat_hdu(hdu) || continue
+        haskey(hdu, STAT_GROUP_ID_KWD) || continue
+        push!(group_ids, hdu[STAT_GROUP_ID_KWD].string)
     end
     return unique!(group_ids)
 end
@@ -83,12 +85,22 @@ function find_stat_hdus(fitsfile::FitsFile, stat_group_id::String)
             W = weights_hdu.data_eltype
         else
             if !(@isdefined moments_hdus)
+                haskey(hdu, STAT_NB_MOMENTS_KWD) || throw(
+                    ArgumentError(
+                        "missing $STAT_NB_MOMENTS_KWD in stat HDU for group \"$stat_group_id\""
+                    )
+                )
                 T = hdu.data_eltype
                 N = hdu.data_ndims
                 K = hdu[STAT_NB_MOMENTS_KWD].integer
                 moments_hdus = Vector{FitsImageHDU}(undef, K)
             end
             T = promote_type(T, hdu.data_eltype)
+            haskey(hdu, STAT_MOMENT_INDEX_KWD) || throw(
+                ArgumentError(
+                    "missing $STAT_MOMENT_INDEX_KWD in stat HDU for group \"$stat_group_id\""
+                )
+            )
             k = hdu[STAT_MOMENT_INDEX_KWD].integer
             (1 <= k <= K) || throw(
                 ArgumentError(
@@ -132,6 +144,9 @@ function Base.read(
         readkwds...
     )
     isa_stat_hdu(fitsfile[ext]) || throw(ArgumentError("HDU \"$ext\" is not a stat HDU"))
+    haskey(fitsfile[ext], STAT_GROUP_ID_KWD) || throw(
+        ArgumentError("HDU \"$ext\" is missing $STAT_GROUP_ID_KWD keyword")
+    )
     stat_group_id = fitsfile[ext][STAT_GROUP_ID_KWD].string
     return read(IndependentStatistic, fitsfile, stat_group_id; readkwds...)
 end
