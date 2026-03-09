@@ -75,6 +75,46 @@ end
               get_moments(read(IndependentStatistic, fitsfile, stat_group_id2), i) == 
               get_moments(stat2, i)
           end
+
+    @test read(IndependentStatistic, fitsfile) == stat1
+    @test read(IndependentStatistic, fitsfile; ext=2) == stat1
+    @test read(IndependentStatistic, fitsfile; ext="WEIGHTS") == stat1
+end
+
+@testset "read errors" begin
+    fitsfile2_path = joinpath(dir, "test2.fits")
+
+    writefits!(fitsfile2_path, FitsHeader(), [0;;])
+    err = ArgumentError("HDU \"1\" is not a stat HDU")
+    @test_throws err FitsFile(f -> read(IndependentStatistic, f), fitsfile2_path)
+
+    writefits!(fitsfile2_path,
+        FitsHeader(),
+        [0;;],
+        filter(!is_structural, FitsHeader(fitsfile["MOMENT-1"])),
+        read(fitsfile["MOMENT-1"]))
+    err = ArgumentError("HDU \"1\" is not a stat HDU")
+    @test_throws err FitsFile(f -> read(IndependentStatistic, f), fitsfile2_path)
+
+    writefits!(fitsfile2_path,
+        filter(!is_structural, FitsHeader(fitsfile["MOMENT-1"])),
+        read(fitsfile["MOMENT-1"]))
+    err = ArgumentError("could not find weights HDU")
+    @test_throws err FitsFile(f -> read(IndependentStatistic, f), fitsfile2_path)
+
+    writefits!(fitsfile2_path,
+        filter(!is_structural, FitsHeader(fitsfile["WEIGHTS"])),
+        read(fitsfile["WEIGHTS"]))
+    err = ArgumentError("could not find any moment HDU")
+    @test_throws err FitsFile(f -> read(IndependentStatistic, f), fitsfile2_path)
+
+    writefits!(fitsfile2_path,
+        filter(!is_structural, FitsHeader(fitsfile["WEIGHTS"])),
+        read(fitsfile["WEIGHTS"]),
+        filter(!is_structural, FitsHeader(fitsfile["MOMENT-1"])),
+        read(fitsfile["MOMENT-1"]))
+    err = ArgumentError("could not find moment number 2 HDU")
+    @test_throws err FitsFile(f -> read(IndependentStatistic, f), fitsfile2_path)
 end
 
 try close(fitsfile) catch err; end # finally close file ignoring any error

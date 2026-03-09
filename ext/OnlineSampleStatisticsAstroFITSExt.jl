@@ -84,10 +84,10 @@ function find_stat_hdus(fitsfile::FitsFile, stat_group_id::String)
             moments_hdus[k] = hdu
         end
     end
-    (@isdefined weights_hdu)  || ArgumentError("could not find weights HDU")
-    (@isdefined moments_hdus) || ArgumentError("could not find any moment HDU")
+    (@isdefined weights_hdu)  || throw(ArgumentError("could not find weights HDU"))
+    (@isdefined moments_hdus) || throw(ArgumentError("could not find any moment HDU"))
     for k in 1:K
-        isassigned(moments_hdus, k) || ArgumentError("could not find moment number $k HDU")
+        isassigned(moments_hdus, k) || throw(ArgumentError("could not find moment number $k HDU"))
     end
     (moments_hdus, weights_hdu, T, N, K, W)
 end
@@ -111,6 +111,7 @@ function Base.read(
     fitsfile::FitsFile
     ; ext::Union{Int,String}=1,
       readkwds...)
+    isa_stat_hdu(fitsfile[ext]) || throw(ArgumentError("HDU \"$ext\" is not a stat HDU"))
     stat_group_id = fitsfile[ext][STAT_GROUP_ID_KWD].string
     read(IndependentStatistic, fitsfile, stat_group_id; readkwds...)
 end
