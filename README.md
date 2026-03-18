@@ -319,7 +319,11 @@ If no group ID is provided when writing, OnlineSampleStatistics generates one au
 
 If you don't know which group IDs are present in a file, you can retrieve them:
 ```julia
-fitsfile = openfits("myfile.fits")
 ids = OnlineSampleStatistics.find_stat_group_ids(fitsfile)
-close(fitsfile)
+```
+
+You can retrieve every HDUs for a stat:
+```julia
+stat_group_id = "ABC"
+(moments_hdus, weight_hdu, T, N, K, W) = OnlineSampleStatistics.find_stat_hdus(fitsfile, stat_group_id)
 ```

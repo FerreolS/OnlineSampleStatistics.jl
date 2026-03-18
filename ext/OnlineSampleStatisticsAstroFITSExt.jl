@@ -2,13 +2,13 @@ module OnlineSampleStatisticsAstroFITSExt
 
 if isdefined(Base, :get_extension)
     using OnlineSampleStatistics, AstroFITS
-    import OnlineSampleStatistics: isa_stat_hdu, find_stat_group_ids,
+    import OnlineSampleStatistics: isa_stat_hdu, find_stat_group_ids, find_stat_hdus,
         STAT_HDU_KWD, STAT_GROUP_ID_KWD, STAT_MOMENT_INDEX_KWD,
         STAT_NB_MOMENTS_KWD, STAT_WEIGHTS_KWD
     import Base: read, write
 else
     using ..OnlineSampleStatistics, ..AstroFITS
-    import ..OnlineSampleStatistics: isa_stat_hdu, find_stat_group_ids,
+    import ..OnlineSampleStatistics: isa_stat_hdu, find_stat_group_ids, find_stat_hdus,
         STAT_HDU_KWD, STAT_GROUP_ID_KWD, STAT_MOMENT_INDEX_KWD,
         STAT_NB_MOMENTS_KWD, STAT_WEIGHTS_KWD
     import ..Base: read, write
@@ -19,7 +19,7 @@ end
 
 Return `true` if `hdu` is an image HDU tagged as an OnlineSampleStatistics HDU.
 """
-function isa_stat_hdu(hdu)
+function OnlineSampleStatistics.isa_stat_hdu(hdu)
     return (
         hdu isa AstroFITS.FitsImageHDU
             && haskey(hdu, STAT_HDU_KWD)
@@ -132,7 +132,7 @@ Find all HDUs belonging to `stat_group_id` and return
 `(moments_hdus, weights_hdu, T, N, K, W)`.
 Throws `ArgumentError` if required HDUs or metadata are missing/inconsistent.
 """
-function find_stat_hdus(fitsfile::FitsFile, stat_group_id::String)
+function OnlineSampleStatistics.find_stat_hdus(fitsfile::FitsFile, stat_group_id::String)
     local moments_hdus, weights_hdu, T, N, K, W
     for hdu in fitsfile
         isa_stat_hdu(hdu) || continue
