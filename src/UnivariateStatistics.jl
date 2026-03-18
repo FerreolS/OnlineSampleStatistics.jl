@@ -556,8 +556,7 @@ function Base.merge!(A::UnivariateStatistic{T1, 2, I}, B::UnivariateStatistic{T2
 end
 
 
-@generated function Base.merge!(A::UnivariateStatistic{T, P}, B::UnivariateStatistic{T, M}) where {T, M, P}
-    P ≤ M || throw(ArgumentError("The number of moment $M of the second Arguments is less than the first $P."))
+@generated function _merge_impl!(A::UnivariateStatistic{T, P}, B::UnivariateStatistic) where {T, P}
     code = Expr(:block)
     push!(
         code.args, quote
@@ -567,9 +566,6 @@ end
             μA = A.rawmoments[1]
             μB, MB = B.rawmoments[1:2]
             δBA = (μB - μA)
-            BoN = -wb * iN * δBA
-            AoN = wa * iN * δBA
-
             BoN = -iN * wb * δBA
             AoN = iN * wa * δBA
         end
@@ -588,6 +584,11 @@ end
     )
     push!(code.args, :(return A))
     return code
+end
+
+function Base.merge!(A::UnivariateStatistic{T, P}, B::UnivariateStatistic{T, M}) where {T, M, P}
+    P ≤ M || throw(ArgumentError("The number of moment $M of the second Arguments is less than the first $P."))
+    return _merge_impl!(A, B)
 end
 
 
