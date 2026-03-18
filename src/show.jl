@@ -67,7 +67,7 @@ end
 
 Return a compact one-line summary of the statistic.
 """
-function Base.summary(io::IO, A::UnivariateStatistic{T, K, I}) where {T, K, I}
+function Base.summary(io::IO, _A::UnivariateStatistic{T, K, I}) where {T, K, I}
     return print(io, "UnivariateStatistic{$T,$K,$I}  with $K moments")
 end
 #= 

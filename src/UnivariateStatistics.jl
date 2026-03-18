@@ -1,4 +1,4 @@
-using Statistics, StatsBase, OnlineStatsBase
+using OnlineStatsBase, Statistics, StatsBase
 """
     UnivariateStatistic{T,K,I}
 

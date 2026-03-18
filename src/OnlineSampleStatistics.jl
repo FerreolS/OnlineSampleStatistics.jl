@@ -1,17 +1,17 @@
 module OnlineSampleStatistics
 
-export UnivariateStatistic,
-    IndependentStatistic,
-    mean,
-    var,
-    std,
-    nobs,
-    skewness,
-    kurtosis,
-    order,
-    get_moments,
+export IndependentStatistic,
+    UnivariateStatistic,
     fit!,
-    merge!
+    get_moments,
+    kurtosis,
+    mean,
+    merge!,
+    nobs,
+    order,
+    skewness,
+    std,
+    var
 
 VERSION >= v"1.11.0-DEV.469" && eval(Meta.parse(string(
     "public STAT_HDU_KWD, STAT_GROUP_ID_KWD, STAT_MOMENT_INDEX_KWD, STAT_NB_MOMENTS_KWD, ",
@@ -21,9 +21,9 @@ import OnlineStatsBase
 import Statistics
 import StatsBase
 
-import OnlineStatsBase: value, _fit!
+import OnlineStatsBase: _fit!, value
 
-import StatsBase: fit!, nobs, mean, var, std, skewness, kurtosis, weights
+import StatsBase: fit!, kurtosis, mean, nobs, skewness, std, var, weights
 
 
 include("UnivariateStatistics.jl")
