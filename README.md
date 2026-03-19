@@ -265,9 +265,9 @@ julia> @btime fit!(A,x)
   3.898 s (0 allocations: 0 bytes)
 ```
 
-### Input Output with FITS files
+## Input Output with FITS files
 
-Load [AstroFITS](https://github.com/emmt/AstroFITS.jl) so the extension is available:
+When the package [AstroFITS](https://github.com/emmt/AstroFITS.jl)  is loaded a extension write/read `IndependentStatistic` in FITS files.
 ```julia
 using AstroFITS
 ```

@@ -23,6 +23,7 @@ makedocs(;
     pages = [
         "Home" => "index.md",
         "Core Types" => "types.md",
+        "I/O" => "IO.md",
     ],
 )
 
