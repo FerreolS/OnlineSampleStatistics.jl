@@ -1,13 +1,13 @@
 module OnlineSampleStatisticsAstroFITSExt
 
 if isdefined(Base, :get_extension)
-    using OnlineSampleStatistics, AstroFITS
+    using OnlineSampleStatistics, AstroFITS, StructuredArrays
     import OnlineSampleStatistics: isa_stat_hdu, find_stat_group_ids, find_stat_hdus,
         STAT_HDU_KWD, STAT_GROUP_ID_KWD, STAT_MOMENT_INDEX_KWD,
         STAT_NB_MOMENTS_KWD, STAT_WEIGHTS_KWD
     import Base: read, write
 else
-    using ..OnlineSampleStatistics, ..AstroFITS
+    using ..OnlineSampleStatistics, ..AstroFITS, ..StructuredArrays
     import ..OnlineSampleStatistics: isa_stat_hdu, find_stat_group_ids, find_stat_hdus,
         STAT_HDU_KWD, STAT_GROUP_ID_KWD, STAT_MOMENT_INDEX_KWD,
         STAT_NB_MOMENTS_KWD, STAT_WEIGHTS_KWD
@@ -110,7 +110,9 @@ function Base.write(
         write(moments_hdus[k], OnlineSampleStatistics.get_rawmoments(stat, k))
     end
 
-    weights_hdu = FitsImageHDU{W, N}(file, dims)
+    # if the weights are uniform, we will write an Array{T,N} with only one cell
+    is_uniform = (nobs(stat) isa AbstractUniformArray)
+    weights_hdu = FitsImageHDU{W, N}(file, is_uniform ? ntuple(_ -> 1, N) : dims)
     merge!(
         weights_hdu, FitsHeader(
             STAT_HDU_KWD => (true, "is a OnlineSampleStatistics.jl data"),
@@ -120,7 +122,11 @@ function Base.write(
     )
     # adding EXTNAME unless the user already specified one
     haskey(weights_hdu, "EXTNAME") || push!(weights_hdu, "EXTNAME" => "WEIGHTS")
-    write(weights_hdu, nobs(stat))
+    if is_uniform
+        write(weights_hdu, fill(first(nobs(stat)), ntuple(_ -> 1, N)))
+    else
+        write(weights_hdu, nobs(stat))
+    end
 
     return file
 end
@@ -198,6 +204,11 @@ function Base.read(
 
     moments = NTuple{K, Array{T, N}}(read(Array{T, N}, moments_hdus[k]) for k in 1:K)
     weights = read(Array{W, N}, weights_hdu; readkwds...)
+
+    # handle uniform weights stored as one-cell array
+    if length(weights) == 1
+        weights = MutableUniformArray(first(weights), size(moments[1]))
+    end
 
     return OnlineSampleStatistics.build_from_rawmoments(weights, moments)
 end
