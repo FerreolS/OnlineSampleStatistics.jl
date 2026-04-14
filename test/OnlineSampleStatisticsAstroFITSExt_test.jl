@@ -164,6 +164,14 @@ Ext = Base.get_extension(OnlineSampleStatistics, :OnlineSampleStatisticsAstroFIT
             @test_throws err FitsFile(f -> read(IndependentStatistic, f), fitsfile2_path)
         end
 
+        @testset "read/write with non uniform weights" begin
+            stat_group_id = "non uni weights"
+            non_uni_stat = IndependentStatistic(2, rand(Float32,3,3,10), rand(1:100,3,3,10); dims=3)
+            @test_nowarn write(fitsfile, FitsHeader(), non_uni_stat, stat_group_id)
+            @test_nowarn read(IndependentStatistic, fitsfile, stat_group_id)
+            @test read(IndependentStatistic, fitsfile, stat_group_id) == non_uni_stat
+        end
+
         try
             close(fitsfile)
         catch err
