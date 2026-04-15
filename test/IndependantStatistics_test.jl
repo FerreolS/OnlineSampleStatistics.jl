@@ -32,6 +32,9 @@ using ZippedArrays, StructuredArrays
         @test @inferred(get_rawmoments(A, 1)) == @inferred(get_rawmoments(B, 1))
         @test @inferred(get_rawmoments(A)) == @inferred(get_rawmoments(B))
         @test @inferred(get_moments(A, 1)) == @inferred(get_moments(B, 1))
+        @test length(get_moments(A)) == order(A)
+        @test all(get_moments(A)[k] == get_moments(A, k) for k in 1:order(A))
+        @test @inferred(get_moments(A)) == [get_moments(B, k) for k in 1:order(B)]
         @test @inferred(weights(A)) == @inferred(weights(B))
         @test @inferred(nobs(A)) == @inferred(nobs(B))
         @test @inferred(mean(A)) == data
