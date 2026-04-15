@@ -187,6 +187,12 @@ weights(x::IndependentStatistic) = @inbounds x.args[1]
 get_rawmoments(x::IndependentStatistic{T, N, K, I}, k::Int) where {T, N, K, I} = @inbounds x.args[2:(K + 1)][k]
 order(::IndependentStatistic{T, N, K}) where {T, N, K} = K
 
+function get_moments(A::IndependentStatistic{T, N, K, I}, k::Int) where {T, N, K, I}
+    k == 1 && return get_rawmoments(A, 1)
+    return @inbounds get_rawmoments(A, k) ./ weights(A)
+end
+get_moments(A::IndependentStatistic{T, N, K, I}) where {T, N, K, I} = [get_moments(A, k) for k in 1:K]
+
 #= statistic functions =#
 StatsBase.nobs(x::IndependentStatistic) = @inbounds x.args[1]
 
@@ -635,4 +641,3 @@ const STAT_WEIGHTS_KWD = "STAT-WEIGHTS"
 function isa_stat_hdu        end # defined in the extension
 function find_stat_group_ids end # defined in the extension
 function find_stat_hdus      end # defined in the extension
-
