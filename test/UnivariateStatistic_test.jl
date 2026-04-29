@@ -106,6 +106,17 @@
         merge!(B, C)
         @test isapprox(A.rawmoments, B.rawmoments; rtol = 1.0e-6)
 
+        y1 = randn(5_000)
+        y2 = Float32.(randn(5_000))
+        D = UnivariateStatistic(Float64, 4)
+        E = UnivariateStatistic(Float32, 4)
+        F = UnivariateStatistic(Float64, 4)
+        fit!(D, y1)
+        fit!(E, y2)
+        fit!(F, vcat(y1, Float64.(y2)))
+        merge!(D, E)
+        @test isapprox(D.rawmoments, F.rawmoments; rtol = 1.0e-5)
+
         @test_throws ArgumentError kurtosis(UnivariateStatistic(3))
     end
 

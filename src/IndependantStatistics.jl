@@ -326,19 +326,17 @@ fit!(A, x)
 mean(A)
 ```
 """
-function fit!(A::IndependentStatistic{T, N}, x::AbstractArray{T, N2}) where {T, N, N2}
+function fit!(A::IndependentStatistic{T, N}, x::AbstractArray{TX, N2}) where {T, TX <: Number, N, N2}
+    promote_type(T, TX) == T || throw(ArgumentError("fit! : incompatible element types $TX for $T"))
+    xT = TX == T ? x : T.(x)
+
     N2 ≥ N || throw(ArgumentError("fit! : N2 < N"))
-    _sliced_fit!(Val(size(A)), A, x)
-    return A
-end
+    N2 == N && size(A) == size(xT) && return _fit!(A, xT)
 
-function fit!(A::IndependentStatistic{T, N}, x::AbstractArray{T, N}) where {T, N}
-    size(A) == size(x) && return _fit!(A, x)
-
-    szx = size(x)
+    szx = size(xT)
     szA = size(A)
     _check_fit_compatible_size(szA, szx)
-    _sliced_fit!(Val(szA), A, x)
+    _sliced_fit!(Val(szA), A, xT)
     return A
 end
 
@@ -482,30 +480,19 @@ end
 end
 
 #=  WEIGHTED DATA =#
-fit!(A::IndependentStatistic{T}, x::AbstractArray{T2}, w) where {T, T2} = fit!(A, T.(x), w)
+function fit!(A::IndependentStatistic{T, N}, x::AbstractArray{TX, N2}, w::W) where {T, TX <: Number, N, N2, W <: Union{Real, AbstractArray{<:Real, N2}}}
+    promote_type(T, TX) == T || throw(ArgumentError("fit! : incompatible element types $TX for $T"))
+    xT = TX == T ? x : T.(x)
 
-function fit!(A::IndependentStatistic{T, N}, x::AbstractArray{T, N2}, w::W) where {T, N, N2, W <: Union{Real, AbstractArray{<:Real, N2}}}
     N2 ≥ N || throw(ArgumentError("fit! : N2 < N"))
     if W <: AbstractArray
-        size(x) == size(w) || throw(ArgumentError("IndependentStatistic : size(x) != size(w)"))
+        size(xT) == size(w) || throw(ArgumentError("IndependentStatistic : size(x) != size(w)"))
     end
 
-    szx = size(x)
+    szx = size(xT)
     szA = size(A)
     _check_fit_compatible_size(szA, szx)
-    _sliced_fit!(Val(szA), A, x, w)
-    return A
-end
-
-function fit!(A::IndependentStatistic{T, N, K}, x::AbstractArray{T, N}, w::W) where {T, N, K, W <: Union{Real, AbstractArray{<:Real, N}}}
-    if W <: AbstractArray
-        size(x) == size(w) || throw(ArgumentError("IndependentStatistic : size(x) != size(w)"))
-    end
-
-    szx = size(x)
-    szA = size(A)
-    _check_fit_compatible_size(szA, szx)
-    _sliced_fit!(Val(szA), A, x, w)
+    _sliced_fit!(Val(szA), A, xT, w)
     return A
 end
 

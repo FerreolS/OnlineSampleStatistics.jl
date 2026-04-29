@@ -635,5 +635,12 @@ function Base.merge!(A::UnivariateStatistic{T, P}, B::UnivariateStatistic{T, M})
     return _merge_impl!(A, B)
 end
 
+function Base.merge!(A::UnivariateStatistic{T1, P}, B::UnivariateStatistic{T2, M}) where {T1, T2, M, P}
+    P ≤ M || throw(ArgumentError("The number of moment $M of the second Arguments is less than the first $P."))
+    promote_type(T1, T2) == T1 || throw(ArgumentError("The input for $(typeof(A)) is $T1. Found $(eltype(B))."))
+
+    return _merge_impl!(A, build_from_rawmoments(weights(B), T1.(B.rawmoments)))
+end
+
 
 value(A::UnivariateStatistic) = get_moments(A)

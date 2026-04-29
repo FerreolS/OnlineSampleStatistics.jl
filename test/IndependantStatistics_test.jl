@@ -163,6 +163,19 @@ using ZippedArrays, StructuredArrays
         @test mean(Aw_int) ≈ mean(Aw_vec)
     end
 
+    @testset "type-flexible fit!" begin
+        x32 = rand(Float32, 2, 3, 8)
+        w = rand(2, 3, 8)
+
+        A = IndependentStatistic(Float64, 2, (2, 3, 1))
+        fit!(A, x32)
+        @test eltype(mean(A)) == Float64
+
+        B = IndependentStatistic(Float64, 2, Float64, (2, 3, 1))
+        fit!(B, x32, w)
+        @test eltype(mean(B)) == Float64
+    end
+
     @testset "fit! from IndependentStatistic" begin
         x = randn(2, 3, 20)
         x1 = x[:, :, 1:10]
