@@ -2,26 +2,29 @@ using OnlineStatsBase, Statistics, StatsBase
 """
     UnivariateStatistic{T,K,I}
 
-A mutable struct for managing univariate statistics, such as mean, variance, skewness, and kurtosis.
-This struct supports online (incremental) updates to the statistics.
+Mutable online accumulator for univariate moments.
 
-## Fields
-- `weights::I`: the total weight or count (when I==Int) of the data.
-- `rawmoments::Vector{T}`: A vector of size K containing the raw moments of the data.
+The statistic stores an accumulated weight/count and `K` raw moments for values
+of type `T`, with weights of type `I`.
 
-## Example
+This type returns online statistics through `mean`, `var`, and related queries.
+
+# Example
 ```julia
 A = UnivariateStatistic(2, [1.0, 2.0, 3.0])
-mean(A)  # Calculate the mean (2.0)
-var(A)  # Calculate the variance (1.0)
-fit!(A, 4.0)  # Add a new data point
+fit!(A, 4.0)
+mean(A), var(A)
 ```
 """
 
 mutable struct UnivariateStatistic{T, K, I, R} <: OnlineStatsBase.OnlineStat{T}
     weights::I
     rawmoments::R
-    @doc "Inner constructor rawmoments can be given as a vector or a NTuple"
+    @doc """
+        UnivariateStatistic{T,K,I}(weights, rawmoments)
+
+    Inner constructor where `rawmoments` may be a `Vector` or an `NTuple`.
+    """
     function UnivariateStatistic{T, K, I}(weights::I, rawmoments::Vector{T}) where {T, K, I}
         K == length(rawmoments) || throw(ArgumentError("The length of rawmoments $(length(rawmoments)) must be equal to $K"))
         nonnegative(weights) || throw(ArgumentError("weights can't be negative"))
@@ -113,6 +116,15 @@ Construct from arrays of samples and weights.
     UnivariateStatistic(K::Int)
 
 Construct an empty `UnivariateStatistic` of type `Float64` and order `K`.
+
+This constructor returns a mutable accumulator ready to receive samples via `fit!`.
+
+# Example
+```julia
+A = UnivariateStatistic(2)
+fit!(A, [1.0, 2.0, 3.0])
+mean(A)
+```
 """
 UnivariateStatistic(T::Type, K::Int) = UnivariateStatistic(T, K, Int)
 UnivariateStatistic(K::Int) = UnivariateStatistic(Float64, K)
@@ -225,27 +237,31 @@ Base.eltype(::UnivariateStatistic{T}) where {T} = T
 
 Base.:(==)(A::UnivariateStatistic{T, K, I}, B::UnivariateStatistic{T, K, I}) where {T, K, I} = A.rawmoments == B.rawmoments && A.weights == B.weights
 Base.isapprox(A::UnivariateStatistic{T, K, I}, B::UnivariateStatistic{T, K, I}; kwds...) where {T, K, I} = isapprox(A.rawmoments, B.rawmoments; kwds...) && isapprox(A.weights, B.weights; kwds...)
-""" 
+"""
     copy(A::UnivariateStatistic)
-   Copy  (deepcopy) the UnivariateStatistic `A` to a new object.
+
+Return a deep copy of `A`.
 """
 Base.copy(A::UnivariateStatistic) = deepcopy(A)
 
 
 """
-    nobs(A::UnivariateStatistic) 
-Return the number of samples  or the sum of weights in a `A`.
+    nobs(A::UnivariateStatistic)
+
+This function returns the number of observations (or total weight) stored in `A`.
 """
 StatsBase.nobs(A::UnivariateStatistic) = A.weights
-""" 
+"""
     weights(A::UnivariateStatistic)
-Return the sum of weights in a `A`.
+
+This function returns the accumulated weight stored in `A`.
 """
 StatsBase.weights(A::UnivariateStatistic{T, K, W}) where {T, K, W <: Number} = A.weights
 
-""""
+"""
     order(A::UnivariateStatistic)
-Return the number of moments in a `A`.
+
+This function returns the number of tracked moments in `A`.
 """
 order(::UnivariateStatistic{T, K}) where {T, K} = K
 
@@ -259,24 +275,38 @@ get_rawmoments(A::UnivariateStatistic{T, K, I, R}) where {T, K, I, R} = [get_raw
 """
     get_moments(A::UnivariateStatistic, k) -> Number
 
-Compute the k-th moment of a UnivariateStatistic `A`. 
+Compute the `k`-th moment of `A`.
+
+This function returns `0` when `A` has no observations.
 
 """
 get_moments(A::UnivariateStatistic{T, K, I, R}, k) where {T, K, I, R} = ifelse((N = weights(A)) == 0, T(0), get_rawmoments(A, k) / ifelse(k == 1, T(1), T(N)))
 get_moments(A::UnivariateStatistic{T, K, I, R}) where {T, K, I, R} = [get_moments(A, k) for k in 1:K]
 
 """
-    mean(A::UnivariateStatistic) 
+    mean(A::UnivariateStatistic)
 
-Compute the sample mean of a  `A` 
+Compute the sample mean of `A`.
+
+This function returns a scalar of the statistic element type.
 """
 Statistics.mean(A::UnivariateStatistic{T, K, I, R}) where {T, K, I, R} = get_moments(A, 1)
 
 """
     var(A::UnivariateStatistic; corrected=true)
 
-Compute the sample variance of a `A`.  If `corrected` is true, the variance is corrected for bias. 
-The unbias variance estimator is only available for an integer number of sample.
+Compute the sample variance of `A`.
+
+If `corrected=true`, applies Bessel correction when observations are integer-counted.
+For non-integer weights, the uncorrected estimator is used.
+
+This function returns the variance as a scalar.
+
+# Example
+```julia
+A = UnivariateStatistic(2, [1.0, 2.0, 3.0])
+var(A)
+```
 
 """
 function Statistics.var(A::UnivariateStatistic{T, K, W}; corrected = true) where {T, K, W}
@@ -295,8 +325,11 @@ function Statistics.var(A::UnivariateStatistic{T, K, W}; corrected = true) where
 end
 
 """
-     std(A::UnivariateStatistic; corrected=true)
-Compute the sample standard deviation of a `A`, from its variance (corrected by default).
+    std(A::UnivariateStatistic; corrected=true)
+
+Compute the sample standard deviation of `A` from `var(A; corrected=corrected)`.
+
+This function returns the standard deviation as a scalar.
 
 """
 Statistics.std(A::UnivariateStatistic; corrected = true) = sqrt(var(A; corrected = corrected))
@@ -335,7 +368,16 @@ end
 """
     fit!(A::UnivariateStatistic{T}, y::T2) where {T, T2}
 
-Pushes a new samples `y` into the UnivariateStatistic `A`.
+Push samples `y` into `A`.
+
+This function returns the updated statistic `A`.
+
+# Example
+```julia
+A = UnivariateStatistic(2)
+fit!(A, [1.0, 2.0, 3.0])
+mean(A)
+```
 
 # Throws
 - `ArgumentError`: If the type of elements in `y` is not compatible with the type `T` of `A`.
@@ -521,7 +563,9 @@ end
 """
     merge!(A::UnivariateStatistic, B::UnivariateStatistic)
 
-Merges (inplace) the statistics from `B` into `A` in-place. 
+Merge statistic `B` into `A` in place.
+
+This function returns the updated statistic `A`.
 
 ## Example
 ```julia

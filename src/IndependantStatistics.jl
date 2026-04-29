@@ -53,12 +53,27 @@ order(::AbstractArray{<:UnivariateStatistic{T, K}}) where {T, K} = K
 
 #===  IndependentStatistic ===#
 
+"""
+    IndependentStatistic{T,N,K,W}
+
+Alias type for an array-like container of independent `UnivariateStatistic`
+accumulators over an `N`-dimensional domain.
+
+This type returns per-element online statistics.
+"""
 IndependentStatistic{T, N, K, W} = ZippedArray{UnivariateStatistic{T, K, W}, N, K2, I, A} where {I, A, K2}
 
 ZippedArrays.build(::Type{<:UnivariateStatistic}, args...) = build_from_rawmoments(args...)
 ZippedArrays.build(::Type{<:UnivariateStatistic}, args::Tuple) = build_from_rawmoments(args...)
 
 #= constructor for IndependentStatistic =#
+"""
+    IndependentStatistic(K::Int, sz::NTuple{N,Int})
+
+Construct an empty independent statistic of order `K` on shape `sz`.
+
+This constructor returns a statistic with `Float64` values and integer counts.
+"""
 IndependentStatistic(K::Int, sz::NTuple{N, Int}) where {N} = IndependentStatistic(Float64, K, sz)
 
 function IndependentStatistic(::Type{T}, K::Int, sz::NTuple{N, Int}) where {T, N}
@@ -187,6 +202,13 @@ weights(x::IndependentStatistic) = @inbounds x.args[1]
 get_rawmoments(x::IndependentStatistic{T, N, K, I}, k::Int) where {T, N, K, I} = @inbounds x.args[2:(K + 1)][k]
 order(::IndependentStatistic{T, N, K}) where {T, N, K} = K
 
+"""
+    get_moments(A::IndependentStatistic, k::Int)
+
+Compute the `k`-th moment array of `A`.
+
+This function returns an array with the same shape as `A`.
+"""
 function get_moments(A::IndependentStatistic{T, N, K, I}, k::Int) where {T, N, K, I}
     k == 1 && return get_rawmoments(A, 1)
     return @inbounds get_rawmoments(A, k) ./ weights(A)
@@ -194,10 +216,29 @@ end
 get_moments(A::IndependentStatistic{T, N, K, I}) where {T, N, K, I} = [get_moments(A, k) for k in 1:K]
 
 #= statistic functions =#
+"""
+    nobs(A::IndependentStatistic)
+
+This function returns the array of observation counts (or weights) stored in `A`.
+"""
 StatsBase.nobs(x::IndependentStatistic) = @inbounds x.args[1]
 
+"""
+    mean(A::IndependentStatistic)
+
+Compute the sample mean array stored in `A`.
+
+This function returns an array with the same shape as `A`.
+"""
 Statistics.mean(A::IndependentStatistic) = get_rawmoments(A, 1)
 
+"""
+    var(A::IndependentStatistic; corrected=true)
+
+Compute sample variances from the second centered moment in `A`.
+
+This function returns an array with the same shape as `A`.
+"""
 function Statistics.var(A::IndependentStatistic{T, N, K, I}; corrected = true) where {T, N, K, I}
     2 ≤ K || throw(ArgumentError("second moment is not available for type $(typeof(A))"))
     W = nobs(A)
@@ -210,13 +251,23 @@ end
 
 
 """
-     std(A::IndependentStatistic; corrected=true)
-Compute the sample standard deviation of a `A`, from its variance (corrected by default).
+    std(A::IndependentStatistic; corrected=true)
+
+Compute sample standard deviations from `var(A; corrected=corrected)`.
+
+This function returns an array with the same shape as `A`.
 
 """
 Statistics.std(A::IndependentStatistic; corrected = true) = sqrt.(var(A; corrected = corrected))
 
 
+"""
+    skewness(A::IndependentStatistic)
+
+Compute element-wise sample skewness of `A`.
+
+This function returns an array with the same shape as `A`.
+"""
 function StatsBase.skewness(A::IndependentStatistic{T, N, K}) where {T, N, K}
     3 ≤ K || throw(ArgumentError("third moment is not available for type $(typeof(A))"))
     W = nobs(A)
@@ -225,6 +276,13 @@ function StatsBase.skewness(A::IndependentStatistic{T, N, K}) where {T, N, K}
     return @. cm3 / sqrt(cm2 * cm2 * cm2 / W)
 end
 
+"""
+    kurtosis(A::IndependentStatistic)
+
+Compute element-wise excess kurtosis of `A`.
+
+This function returns an array with the same shape as `A`.
+"""
 function StatsBase.kurtosis(A::IndependentStatistic{T, N, K}) where {T, N, K}
     4 ≤ K || throw(ArgumentError("fourth moment is not available for type $(typeof(A))"))
     W = nobs(A)
@@ -234,6 +292,21 @@ function StatsBase.kurtosis(A::IndependentStatistic{T, N, K}) where {T, N, K}
 end
 
 
+"""
+    fit!(A::IndependentStatistic, x)
+
+Update `A` with samples `x`, broadcasting over singleton dimensions when needed.
+
+This function returns the updated statistic `A`.
+
+# Example
+```julia
+x = reshape(1.0:6.0, 2, 3)
+A = IndependentStatistic(2, size(x))
+fit!(A, x)
+mean(A)
+```
+"""
 function fit!(A::IndependentStatistic{T, N}, x::AbstractArray{T, N2}) where {T, N, N2}
     N2 ≥ N || throw(ArgumentError("fit! : N2 < N"))
     _sliced_fit!(Val(size(A)), A, x)
@@ -423,6 +496,15 @@ end
 Merge the accumulated statistics in `B` into `A` in-place.
 `A` must have compatible element type and size, and its number of moments `K`
 must be less than or equal to the one of `B`.
+
+This function returns the updated statistic `A`.
+
+# Example
+```julia
+A = IndependentStatistic(2, (2, 2))
+B = IndependentStatistic(2, (2, 2))
+fit!(A, B)
+```
 """
 function fit!(A::IndependentStatistic{T, N, K}, B::IndependentStatistic{TB, N, KB}) where {T, TB, N, K, KB}
     K ≤ KB || throw(ArgumentError("fit! : order(B) = $KB is less than order(A) = $K"))
@@ -490,6 +572,8 @@ Merge two independent statistics by combining their data.
 Creates a copy of statistic `A` and fits it with the data from statistic `B`,
 returning a new merged statistic `C`.
 
+This function returns a new merged statistic.
+
 # Arguments
 - `A::IndependentStatistic`: The first independent statistic
 - `B::IndependentStatistic`: The second independent statistic to merge into `A`
@@ -521,6 +605,15 @@ represented by `B`. After merging, `A` will contain aggregated statistics from b
 
 # Returns
 - `A::IndependentStatistic`: The updated statistic object
+
+This function returns the updated statistic object.
+
+# Example
+```julia
+A = IndependentStatistic(2, (2, 2))
+B = IndependentStatistic(2, (2, 2))
+merge!(A, B)
+```
 """
 Base.merge!(A::IndependentStatistic, B::IndependentStatistic) = fit!(A, B)
 
@@ -600,7 +693,7 @@ end
         end
     )
     if I.parameters[5].parameters[1] <: MutableUniformArray
-        W == Real && push!(code.args, :(throw(ArgumentError("MutableUniformArray not supported for non scalar weights"))))
+        W <: AbstractArray && push!(code.args, :(throw(ArgumentError("MutableUniformArray not supported for non scalar weights"))))
         push!(code.args, :(MWAI = first(wa)))
         push!(code.args, :(MNI = inv.(first(increment_weights!(A, wb)))))
         NI = :(MNI)
