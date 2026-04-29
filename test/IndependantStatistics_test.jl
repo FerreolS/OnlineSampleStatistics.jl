@@ -145,6 +145,24 @@ using ZippedArrays, StructuredArrays
         @test @inferred(mean(A)) == mean(C)
     end
 
+    @testset "dims argument variants" begin
+        x = randn(2, 3, 10)
+        w = rand(2, 3, 10)
+
+        A_int = IndependentStatistic(2, x; dims = 3)
+        A_tuple = IndependentStatistic(2, x; dims = (3,))
+        A_vec = IndependentStatistic(2, x; dims = [3])
+        @test size(A_int) == (2, 3, 1)
+        @test mean(A_int) ≈ mean(A_tuple)
+        @test mean(A_int) ≈ mean(A_vec)
+
+        Aw_int = IndependentStatistic(2, x, w; dims = 3)
+        Aw_tuple = IndependentStatistic(2, x, w; dims = (3,))
+        Aw_vec = IndependentStatistic(2, x, w; dims = [3])
+        @test mean(Aw_int) ≈ mean(Aw_tuple)
+        @test mean(Aw_int) ≈ mean(Aw_vec)
+    end
+
     @testset "fit! from IndependentStatistic" begin
         x = randn(2, 3, 20)
         x1 = x[:, :, 1:10]

@@ -153,15 +153,34 @@ end
     return code
 end
 
-function IndependentStatistic(K::Int, x::AbstractArray{T, N}, w::AbstractArray{TW, N}; dims = nothing) where {TW, T, N}
+_normalize_dims(::Nothing, ::Int) = nothing
+
+function _normalize_dims(dims::Int, N::Int)
+    1 <= dims <= N || throw(ArgumentError("IndependentStatistic : $dims is not a valid dimension for N=$N"))
+    return (dims,)
+end
+
+function _normalize_dims(dims::Tuple{Vararg{Int}}, N::Int)
+    isempty(dims) && throw(ArgumentError("IndependentStatistic : dims cannot be empty"))
+    all(1 .<= dims .<= N) || throw(ArgumentError("IndependentStatistic : dims must be in 1:$N"))
+    return unique(dims)
+end
+
+function _normalize_dims(dims::AbstractVector{Int}, N::Int)
+    isempty(dims) && throw(ArgumentError("IndependentStatistic : dims cannot be empty"))
+    all(1 .<= dims .<= N) || throw(ArgumentError("IndependentStatistic : dims must be in 1:$N"))
+    return Tuple(unique(dims))
+end
+
+function IndependentStatistic(K::Int, x::AbstractArray{T, N}, w::AbstractArray{TW, N}; dims::Union{Nothing, Int, Tuple{Vararg{Int}}, AbstractVector{Int}} = nothing) where {TW, T, N}
     size(x) == size(w) || throw(ArgumentError("IndependentStatistic : size(x) != size(w)"))
-    if dims === nothing
+    dims_ = _normalize_dims(dims, N)
+    if dims_ === nothing
         A = IndependentStatistic(T, K, TW, size(x))
         _fit!(A, x, w)
     else
-        maximum(dims) ≤ N || throw(ArgumentError("IndependentStatistic : $(maximum(dims)) > $N"))
         sz = size(x)
-        szA = ntuple(i -> ((i ∈ dims) ? 1 : sz[i]), N)
+        szA = ntuple(i -> ((i ∈ dims_) ? 1 : sz[i]), N)
         A = IndependentStatistic(T, K, TW, NTuple{N, Int}(szA))
         _sliced_fit!(Val(szA), A, x, w)
 
@@ -170,26 +189,26 @@ function IndependentStatistic(K::Int, x::AbstractArray{T, N}, w::AbstractArray{T
 end
 
 
-function IndependentStatistic(K::Int, x::AbstractArray{T, N}; dims = nothing) where {T, N}
-    if dims === nothing
+function IndependentStatistic(K::Int, x::AbstractArray{T, N}; dims::Union{Nothing, Int, Tuple{Vararg{Int}}, AbstractVector{Int}} = nothing) where {T, N}
+    dims_ = _normalize_dims(dims, N)
+    if dims_ === nothing
         A = IndependentStatistic(T, K, size(x))
         _fit!(A, x)
     else
-        maximum(dims) ≤ N || throw(ArgumentError("IndependentStatistic : $(maximum(dims)) > $N"))
         sz = size(x)
-        szA = ntuple(i -> ((i ∈ dims) ? 1 : sz[i]), N)
+        szA = ntuple(i -> ((i ∈ dims_) ? 1 : sz[i]), N)
         A = IndependentStatistic(T, K, NTuple{N, Int}(szA))
         _sliced_fit!(Val(szA), A, x)
     end
     return A
 end
 
-function IndependentStatistic(x::AbstractArray{T, N}, w::AbstractArray{TW, N}, K::Int; dims = nothing) where {TW, T, N}
+function IndependentStatistic(x::AbstractArray{T, N}, w::AbstractArray{TW, N}, K::Int; dims::Union{Nothing, Int, Tuple{Vararg{Int}}, AbstractVector{Int}} = nothing) where {TW, T, N}
     Base.depwarn("`IndependentStatistic(x, w, K; dims=...)` is deprecated, use `IndependentStatistic(K, x, w; dims=...)`.", :IndependentStatistic)
     return IndependentStatistic(K, x, w; dims = dims)
 end
 
-function IndependentStatistic(x::AbstractArray{T, N}, K::Int; dims = nothing) where {T, N}
+function IndependentStatistic(x::AbstractArray{T, N}, K::Int; dims::Union{Nothing, Int, Tuple{Vararg{Int}}, AbstractVector{Int}} = nothing) where {T, N}
     Base.depwarn("`IndependentStatistic(x, K; dims=...)` is deprecated, use `IndependentStatistic(K, x; dims=...)`.", :IndependentStatistic)
     return IndependentStatistic(K, x; dims = dims)
 end
