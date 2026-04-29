@@ -51,7 +51,7 @@ import StatsBase: fit!, kurtosis, mean, nobs, skewness, std, var, weights
 
 
 include("UnivariateStatistics.jl")
-include("IndependantStatistics.jl")
+include("IndependentStatistics.jl")
 include("show.jl")
 
 @doc """
