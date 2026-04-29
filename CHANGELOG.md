@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Changed
+- Expanded API docstrings for `IndependentStatistic` and `UnivariateStatistic` constructors and core functions with more detailed descriptions and usage examples.
+- Normalized `dims` handling in `IndependentStatistic` constructors to support `dims::Union{Int,Tuple{Vararg{Int}},AbstractVector{Int}}`.
+- Added type-flexible numeric `fit!` entrypoints for `IndependentStatistic` so promotable input element types are accepted in weighted and unweighted paths.
+- Added higher-order mixed-eltype `merge!` support for `UnivariateStatistic` when source element types can be promoted to the destination type.
+- Renamed internal files `IndependantStatistics.jl` -> `IndependentStatistics.jl` and `IndependantStatistics_test.jl` -> `IndependentStatistics_test.jl` for naming consistency.
+
+### Added
+- Added regression tests for `dims` argument variants (`Int`, `Tuple`, `Vector`) in `IndependentStatistic` constructors.
+- Added tests covering type-flexible `fit!` behavior for `IndependentStatistic` and mixed-eltype higher-order `merge!` for `UnivariateStatistic`.
+
 ## [0.3.3] 2026-04-28
 
 - Added Write uniform weights as one-cell arrays in FITS files i/o
