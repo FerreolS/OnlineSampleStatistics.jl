@@ -643,4 +643,4 @@ function Base.merge!(A::UnivariateStatistic{T1, P}, B::UnivariateStatistic{T2, M
 end
 
 
-value(A::UnivariateStatistic) = get_moments(A)
+OnlineStatsBase.value(A::UnivariateStatistic) = tuple(get_moments(A)...)

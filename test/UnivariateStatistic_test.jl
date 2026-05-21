@@ -36,7 +36,7 @@
         using OnlineStatsBase
 
         A = UnivariateStatistic(Float64, 2, 1)
-        @test value(A) == [1, 0.0]
+        @test value(A) == (1.0, 0.0)
         @test empty!(A) == zero(A)
         fit!(A, ones(10))
         @test A == OnlineSampleStatistics.build_from_rawmoments(10, [1.0, 0.0])
