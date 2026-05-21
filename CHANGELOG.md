@@ -7,16 +7,23 @@ and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.ht
 
 ## [Unreleased]
 
+## [0.3.4] - 2026-05-21
+
 ### Changed
 - Expanded API docstrings for `IndependentStatistic` and `UnivariateStatistic` constructors and core functions with more detailed descriptions and usage examples.
 - Normalized `dims` handling in `IndependentStatistic` constructors to support `dims::Union{Int,Tuple{Vararg{Int}},AbstractVector{Int}}`.
 - Added type-flexible numeric `fit!` entrypoints for `IndependentStatistic` so promotable input element types are accepted in weighted and unweighted paths.
 - Added higher-order mixed-eltype `merge!` support for `UnivariateStatistic` when source element types can be promoted to the destination type.
+- Updated `OnlineStatsBase.value(::UnivariateStatistic)` to return raw moments as a tuple to align with `OnlineStatsBase` expectations.
 - Renamed internal files `IndependantStatistics.jl` -> `IndependentStatistics.jl` and `IndependantStatistics_test.jl` -> `IndependentStatistics_test.jl` for naming consistency.
 
 ### Added
 - Added regression tests for `dims` argument variants (`Int`, `Tuple`, `Vector`) in `IndependentStatistic` constructors.
 - Added tests covering type-flexible `fit!` behavior for `IndependentStatistic` and mixed-eltype higher-order `merge!` for `UnivariateStatistic`.
+
+### CI/QA
+- Added Aqua quality checks (`Aqua.test_all`) to CI.
+- Updated CI workflow/dependency maintenance configuration.
 
 ## [0.3.3] 2026-04-28
 
@@ -88,6 +95,8 @@ and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.ht
 - Initial 0.1 series release.
 
 [0.3.1]: https://github.com/FerreolS/OnlineSampleStatistics.jl/compare/v0.3.0...v0.3.1
+[0.3.3]: https://github.com/FerreolS/OnlineSampleStatistics.jl/compare/v0.3.2...v0.3.3
+[0.3.4]: https://github.com/FerreolS/OnlineSampleStatistics.jl/compare/v0.3.3...v0.3.4
 [0.3.0]: https://github.com/FerreolS/OnlineSampleStatistics.jl/compare/v0.2...v0.3.0
 [0.2]: https://github.com/FerreolS/OnlineSampleStatistics.jl/compare/v0.1...v0.2
 [0.1]: https://github.com/FerreolS/OnlineSampleStatistics.jl/releases/tag/v0.1
