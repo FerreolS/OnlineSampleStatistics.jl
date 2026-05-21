@@ -3,9 +3,9 @@ on:
   push:
     branches:
       - master
-    tags: [ "*" ]
+    tags: ["*"]
   pull_request:
-    types: [ opened, synchronize, reopened ]
+    types: [opened, synchronize, reopened]
   workflow_dispatch:
 concurrency:
   # Skip intermediate builds: always.
@@ -59,8 +59,9 @@ jobs:
       - uses: julia-actions/cache@v3
       - uses: julia-actions/julia-buildpkg@v1
       - run: julia --color=yes -e 'using Pkg; Pkg.add("Aqua")'
-      - run: julia --project=@. --color=yes -e 'using Aqua, OnlineSampleStatistics;
-          Aqua.test_all(OnlineSampleStatistics, ambiguities=false)'
+      - run:
+          julia --project=@. --color=yes -e 'using Aqua, OnlineSampleStatistics;
+          Aqua.test_all(OnlineSampleStatistics)'
   ExplicitImports:
     name: ExplicitImports checks
     runs-on: ubuntu-latest
@@ -120,7 +121,7 @@ jobs:
       - uses: julia-actions/julia-buildpkg@v1
       - run: julia --project=@. --color=yes test/check_readme_examples.jl
   dependabot:
-    needs: [ test, Aqua ]
+    needs: [test, Aqua]
     runs-on: ubuntu-latest
     permissions:
       pull-requests: write
