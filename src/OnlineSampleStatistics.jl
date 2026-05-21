@@ -45,7 +45,7 @@ import OnlineStatsBase
 import Statistics
 import StatsBase
 
-import OnlineStatsBase: _fit!, value
+import OnlineStatsBase: _fit!
 
 import StatsBase: fit!, kurtosis, mean, nobs, skewness, std, var, weights
 
