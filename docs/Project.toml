@@ -5,4 +5,5 @@ OnlineSampleStatistics = "455218f6-ed6f-43e9-ad07-c481a1567983"
 
 [compat]
 AstroFITS = "1.2.0"
+Documenter = "1.17.0"
 OnlineSampleStatistics = "0.3.4"
